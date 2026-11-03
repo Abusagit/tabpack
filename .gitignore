@@ -225,3 +225,8 @@ __marimo__/
 
 # macOS
 .DS_Store
+
+# Local experiment outputs and preserved legacy checkout.
+/artifacts/
+/profiles/
+/results/*.log

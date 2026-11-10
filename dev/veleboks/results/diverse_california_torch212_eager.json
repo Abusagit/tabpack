@@ -1,0 +1,1172 @@
+{
+  "dataset": "California Housing sklearn",
+  "dataset_sha256": "f8ce03213e1c375e51c57d02cb41558c30b643325347f1cc0b26ce713ce3a0b7",
+  "split_sizes": [
+    13209,
+    3303,
+    4128
+  ],
+  "y_mean": 2.0669171810150146,
+  "y_std": 1.151454210281372,
+  "epochs_completed": 60,
+  "profiled_epoch": 3,
+  "members_ids": [
+    15,
+    15,
+    48,
+    15,
+    14,
+    31,
+    48,
+    14,
+    9,
+    9,
+    16,
+    4
+  ],
+  "member_steps": [
+    312,
+    364,
+    364,
+    572,
+    988,
+    1092,
+    1092,
+    1144,
+    1196,
+    1404,
+    1664,
+    1716
+  ],
+  "validation_rmse_original_units": 0.44480668999948847,
+  "test_rmse_original_units": 0.42414313554763794,
+  "dynamo_training_counters": {},
+  "dynamo_training_compile_times": "",
+  "config": {
+    "name": "diverse_california",
+    "seed": 42,
+    "n_models": 64,
+    "max_ensemble_size": 64,
+    "widths": [
+      32,
+      64,
+      128,
+      256,
+      384,
+      512
+    ],
+    "depth_min": 1,
+    "depth_max": 4,
+    "embedding_dims": [
+      4,
+      8,
+      16,
+      32,
+      48,
+      64
+    ],
+    "init_scale": [
+      0.001,
+      20.0
+    ],
+    "dropout_max": 0.7,
+    "adamw_lr": [
+      3e-05,
+      0.01
+    ],
+    "muon_lr": [
+      0.0003,
+      0.15
+    ],
+    "weight_decay": [
+      0.0001,
+      2.0
+    ],
+    "batch_size": 256,
+    "max_epochs": 60,
+    "inference_batch_size": 1024,
+    "model_patience": 16,
+    "ensemble_patience": 32,
+    "profile_epoch": 3
+  },
+  "sampled_models": [
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.015237346654284672
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00010971218936309723,
+        "muon_lr": 0.029163186205343875,
+        "weight_decay": 0.08137758426508636
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.022247875637248515,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.008717028940050052
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0005650298214979931,
+        "muon_lr": 0.000353786324134995,
+        "weight_decay": 0.0007164843355256307
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.34233348537773944
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003305340078639267,
+        "muon_lr": 0.00031236417015462745,
+        "weight_decay": 0.2923161251768826
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 4,
+        "dropout": 0.19450993917014928,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 13.091883613994339
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002119866336749109,
+        "muon_lr": 0.000533874901158303,
+        "weight_decay": 0.0002606033761975338
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.09462375714643737
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 6.1950173617195e-05,
+        "muon_lr": 0.0925483752803224,
+        "weight_decay": 0.0002182338003567777
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.001991401277720226
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0013976821738209018,
+        "muon_lr": 0.03661082519288362,
+        "weight_decay": 1.7276959402203216
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.19458152217706448,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 3.8684230705660254
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.717520988650045e-05,
+        "muon_lr": 0.002728891182513924,
+        "weight_decay": 0.07628576879716234
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 1.3677169484167855
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.751146282946929e-05,
+        "muon_lr": 0.003171466366166167,
+        "weight_decay": 1.802891588465568
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.5899963441328667,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.009663681947883652
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 3.614983153849661e-05,
+        "muon_lr": 0.0021306865736169696,
+        "weight_decay": 0.001417625571846066
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.14034877354436595
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.005117638205974719,
+        "muon_lr": 0.016298932816801,
+        "weight_decay": 0.00041161860456849156
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 2,
+        "dropout": 0.5229096681565805,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 7.270481156238431
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.000305323547685162,
+        "muon_lr": 0.0011723611142828716,
+        "weight_decay": 1.951817319197698
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 5.053932576998338
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.289896639976888e-05,
+        "muon_lr": 0.0008107890571801481,
+        "weight_decay": 0.08448315239990277
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.2671335005545757,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.18868469293402862
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00845345516482434,
+        "muon_lr": 0.06314512850272429,
+        "weight_decay": 0.00011204183674249205
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.5380191128602121,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.0030184865478153793
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00037495682650356987,
+        "muon_lr": 0.005031621084919209,
+        "weight_decay": 1.2658752670606954
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 8.418596838154293
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.004713397335108529,
+        "muon_lr": 0.0019169676978236904,
+        "weight_decay": 0.05599392911012249
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 1.9036268561243108
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0006885082451365382,
+        "muon_lr": 0.03789751775746325,
+        "weight_decay": 0.019101481510375044
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 3,
+        "dropout": 0.01363371967008261,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 6.017403777970774
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003761079746705423,
+        "muon_lr": 0.0020281153641380553,
+        "weight_decay": 0.00017747528350170415
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.12310042727061715
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 4.484727363611746e-05,
+        "muon_lr": 0.03388158229309334,
+        "weight_decay": 0.19673283581711876
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.1860119251739193
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0010173822495616127,
+        "muon_lr": 0.1202009254311571,
+        "weight_decay": 0.9892015695536152
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.2792946099982004,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.6239431475347194
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00038229150251649314,
+        "muon_lr": 0.007482434514769504,
+        "weight_decay": 0.00033146881525571604
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.014723982004941216,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.00976630689439815
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0001078209150582816,
+        "muon_lr": 0.00046636877410254714,
+        "weight_decay": 0.05180751358753478
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.002017249364327301
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00011955784765880455,
+        "muon_lr": 0.01917221152663335,
+        "weight_decay": 0.0008345241991605165
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 2.9721368942293287
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 9.067809350246048e-05,
+        "muon_lr": 0.0005479420305854292,
+        "weight_decay": 0.007144372089922254
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 4,
+        "dropout": 0.6046857238587222,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.787337824570365
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.009121174161680796,
+        "muon_lr": 0.0005530292944159273,
+        "weight_decay": 0.0053912095318766765
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.006578005323960367
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00040636738045599595,
+        "muon_lr": 0.004128260992733705,
+        "weight_decay": 0.0015777239650554822
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.5656155713121918,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.0026369893561877405
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0013255732963093668,
+        "muon_lr": 0.008632804071524577,
+        "weight_decay": 0.00011573746971389786
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.12267527711392014
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00010384360887111957,
+        "muon_lr": 0.0036267446146741973,
+        "weight_decay": 0.00017872800762705487
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 1,
+        "dropout": 0.18564214072050636,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.0168603074562441
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0017160785119971179,
+        "muon_lr": 0.02810173890667028,
+        "weight_decay": 0.23402455681041795
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.018886403214447605
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.008337916123339966,
+        "muon_lr": 0.010972648994910711,
+        "weight_decay": 0.021478197156592348
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.32551076561734665
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0005568674045834689,
+        "muon_lr": 0.06006018498075162,
+        "weight_decay": 0.00047546974276420383
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.36246313408597597
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00151565604073851,
+        "muon_lr": 0.0012939858052195261,
+        "weight_decay": 0.00032782035983769695
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.002252231800280043
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.001366450925370623,
+        "muon_lr": 0.010061246001821017,
+        "weight_decay": 0.0022946486512016766
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 2,
+        "dropout": 0.1670801668310922,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.003655202290640183
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0012753854994213556,
+        "muon_lr": 0.005142291139665513,
+        "weight_decay": 0.9902291600390439
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 1,
+        "dropout": 0.43481147884516497,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 19.24157867287502
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 4.591442721569032e-05,
+        "muon_lr": 0.001128283792922028,
+        "weight_decay": 0.0013824038629097486
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.016816643517067714
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0003824791807653551,
+        "muon_lr": 0.008775062950333014,
+        "weight_decay": 0.0020004850315368658
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.6522292276052541,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 10.92360809761883
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 6.545177863746881e-05,
+        "muon_lr": 0.0006146951320377957,
+        "weight_decay": 0.0002886456060299254
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.19722939002052597,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 1.2203138550469863
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 9.789772207750348e-05,
+        "muon_lr": 0.01544935957901271,
+        "weight_decay": 0.0013658489693529397
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.5346584483340163
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003710786106011535,
+        "muon_lr": 0.0003945573176283927,
+        "weight_decay": 0.0027204245022883246
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.07949645996942388
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0018089837156460677,
+        "muon_lr": 0.009794720734497851,
+        "weight_decay": 0.00030281188461700774
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.32017772779144077
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.091594893797596e-05,
+        "muon_lr": 0.0006623581560720209,
+        "weight_decay": 0.0021175243322482085
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.011836815905424477
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 5.450760473984489e-05,
+        "muon_lr": 0.038250013381629915,
+        "weight_decay": 0.6348774052093573
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 15.80124946327416
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003331194526436857,
+        "muon_lr": 0.07178556988009388,
+        "weight_decay": 0.00012782237597824673
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 3,
+        "dropout": 0.5615645972559972,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 3.069425731442508
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00014133174090639547,
+        "muon_lr": 0.040014872465177605,
+        "weight_decay": 0.0002916906656559196
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 3.252096954717071
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0004349211241333728,
+        "muon_lr": 0.0019990435304635948,
+        "weight_decay": 0.2635147010356972
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.006771065463860426
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002019697622670736,
+        "muon_lr": 0.06456303214121073,
+        "weight_decay": 1.4408508896232601
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.47566268285218455,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.026563513410600516
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 3.5217137917677426e-05,
+        "muon_lr": 0.0698588802579772,
+        "weight_decay": 0.0013289064061564367
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.3680195265255564
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002234847643600785,
+        "muon_lr": 0.03978023260787523,
+        "weight_decay": 0.007532570142206535
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.6296533130378397,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.012461466074209615
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0018420464706909614,
+        "muon_lr": 0.00030316981860996665,
+        "weight_decay": 0.957032199773007
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.30190817973749084,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 9.125634527500276
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0011201257818746503,
+        "muon_lr": 0.018517576795203203,
+        "weight_decay": 0.0003435715711249112
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.2283280334001799,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.018690541954139293
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 6.284242528946938e-05,
+        "muon_lr": 0.004091601206573674,
+        "weight_decay": 1.1079811061376543
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.28425261813071395,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.020275672687104698
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00010171539337636466,
+        "muon_lr": 0.039615100380803625,
+        "weight_decay": 0.040669572923935755
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 4,
+        "dropout": 0.3095118595133652,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.15797002743095723
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0030173064594456686,
+        "muon_lr": 0.11686354111746095,
+        "weight_decay": 0.146349840900592
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.3608164069406515,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.46074358692521034
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 5.160904667949206e-05,
+        "muon_lr": 0.11131143659185579,
+        "weight_decay": 0.0010237098624275495
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.0012736623916394915
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00012440255644881475,
+        "muon_lr": 0.00574777813202345,
+        "weight_decay": 0.4515931160279078
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 4,
+        "dropout": 0.6202958363356871,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.0068591734547042114
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.001713714977816558,
+        "muon_lr": 0.0064778428011379235,
+        "weight_decay": 0.0011204291341172532
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.00873458536653333
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003204740875771014,
+        "muon_lr": 0.022665550148221508,
+        "weight_decay": 0.009955039510507737
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.0037453765980875473
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00044602561708095904,
+        "muon_lr": 0.008140110174245579,
+        "weight_decay": 0.025348626902830892
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 4,
+        "dropout": 0.5813984188049904,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.08277283324992397
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.562360157566776e-05,
+        "muon_lr": 0.06342641650392876,
+        "weight_decay": 0.008625087826719753
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 3,
+        "dropout": 0.43872390588724686,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.07796599359727333
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0018936879794079417,
+        "muon_lr": 0.001288286298765917,
+        "weight_decay": 0.00278285340360682
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.009877853053502925
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00168994467282683,
+        "muon_lr": 0.02419498340911192,
+        "weight_decay": 0.00018890794058579923
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 3,
+        "dropout": 0.29104196387220915,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 3.8219931333266746
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002882199424845376,
+        "muon_lr": 0.03587376457065616,
+        "weight_decay": 1.1723065303326279
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 4,
+        "dropout": 0.00412725850879515,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.019246066184518986
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00028907483076471766,
+        "muon_lr": 0.07649534912871075,
+        "weight_decay": 0.39309188772919085
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.1535951442350053,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.1226763320855344
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00028718438850758294,
+        "muon_lr": 0.01915980538665101,
+        "weight_decay": 0.2709156403110169
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.6436791344682831,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.19828129743717154
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0058236170065230864,
+        "muon_lr": 0.011874685109671995,
+        "weight_decay": 0.0710529054093059
+      }
+    }
+  ],
+  "selected_members": 12,
+  "depths": [
+    2,
+    2,
+    2,
+    2,
+    3,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3
+  ],
+  "linear_layers": [
+    {
+      "allocated": 3145728,
+      "useful": 1216512,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 3145728,
+      "useful": 1434624,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 3145728,
+      "useful": 549888,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 3145728,
+      "useful": 0,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 6144,
+      "useful": 3616,
+      "max_in": 512,
+      "max_out": 1
+    }
+  ],
+  "train_profile_wall_seconds": 851.7854113029316,
+  "inference_profile_10_forwards_seconds": 0.07424568408168852,
+  "torch": "2.12.1+cu126",
+  "cuda": "12.6",
+  "gpu": "Quadro RTX 4000",
+  "peak_memory_bytes": 1642040832,
+  "pid": 3965828
+}

@@ -1,0 +1,3 @@
+# Large local traces and immutable GPU run artifacts.
+/profiles/
+/artifacts/

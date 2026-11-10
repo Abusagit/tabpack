@@ -37,7 +37,7 @@ def loss(pred, target):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('config')
-    parser.add_argument('--output', default='.')
+    parser.add_argument('--output', default=str(Path(__file__).resolve().parent))
     args = parser.parse_args()
     c = json.loads(Path(args.config).read_text())
     root = Path(args.output)

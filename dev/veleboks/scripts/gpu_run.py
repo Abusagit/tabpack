@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Send an immutable snapshot of this Git worktree to a GPU host and run Python.
 
-Example: python3 scripts/gpu_run.py --gpu 4 -- run_profiling_experiment.py configs/paper_california.json --output ../output
+Example: python3 dev/veleboks/scripts/gpu_run.py --gpu 4 -- dev/veleboks/run_profiling_experiment.py dev/veleboks/configs/paper_california.json --output ../output
 """
 import argparse
 import datetime
@@ -51,7 +51,7 @@ def main():
     root = Path(output('git', 'rev-parse', '--show-toplevel', text=True).strip()).resolve()
     os.chdir(root)
     run_id = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
-    local_dir = root / 'artifacts' / 'runs' / run_id
+    local_dir = root / 'dev' / 'veleboks' / 'artifacts' / 'runs' / run_id
     local_dir.mkdir(parents=True, exist_ok=False)
     remote_dir = args.remote_root.rstrip('/') + '/' + run_id
     files = output('git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard').split(b'\0')

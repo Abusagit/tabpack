@@ -1,0 +1,1255 @@
+{
+  "dataset": "California Housing sklearn",
+  "dataset_sha256": "f8ce03213e1c375e51c57d02cb41558c30b643325347f1cc0b26ce713ce3a0b7",
+  "split_sizes": [
+    13209,
+    3303,
+    4128
+  ],
+  "y_mean": 2.0669171810150146,
+  "y_std": 1.151454210281372,
+  "epochs_completed": 60,
+  "profiled_epoch": 3,
+  "members_ids": [
+    15,
+    14,
+    15,
+    15,
+    48,
+    14,
+    28,
+    14,
+    31,
+    48,
+    31,
+    15,
+    14,
+    28,
+    4,
+    55,
+    43,
+    43
+  ],
+  "member_steps": [
+    312,
+    364,
+    364,
+    416,
+    416,
+    520,
+    624,
+    780,
+    884,
+    1040,
+    1092,
+    1144,
+    1196,
+    1248,
+    1300,
+    1456,
+    2444,
+    2964
+  ],
+  "validation_rmse_original_units": 0.4454123332527331,
+  "test_rmse_original_units": 0.42626121640205383,
+  "dynamo_training_counters": {
+    "frames": {
+      "total": 9,
+      "ok": 8
+    },
+    "stats": {
+      "calls_captured": 762,
+      "unique_graphs": 8
+    },
+    "aot_autograd": {
+      "total": 8,
+      "autograd_cache_miss": 8,
+      "ok": 8,
+      "autograd_cache_saved": 8
+    },
+    "inductor": {
+      "pattern_matcher_count": 122,
+      "pattern_matcher_nodes": 122,
+      "fxgraph_cache_miss": 13,
+      "extern_calls": 125,
+      "async_compile_cache_miss": 188,
+      "triton_bundler_save_kernel": 1864,
+      "triton_bundler_save_static_autotuner": 13,
+      "benchmarking.InductorBenchmarker.benchmark": 216,
+      "benchmarking.InductorBenchmarker.benchmark_gpu": 216,
+      "async_compile_cache_hit": 90
+    },
+    "graph_break": {},
+    "aten_mm_info": {
+      "aten.baddbmm_64_256_512_512": 4,
+      "aten.baddbmm_64_256_1_512": 1,
+      "aten.bmm_64_512_1_256": 1,
+      "aten.bmm_64_256_512_512": 4,
+      "aten.bmm_64_512_512_256": 4,
+      "aten.baddbmm_64_s11_512_512": 4,
+      "aten.baddbmm_64_s11_1_512": 1,
+      "aten.bmm_64_512_1_s11": 1,
+      "aten.bmm_64_s11_512_512": 4,
+      "aten.bmm_64_512_512_s11": 4,
+      "aten.baddbmm_64_s22_512_512": 4,
+      "aten.baddbmm_64_s22_1_512": 1,
+      "aten.baddbmm_63_s11_512_512": 4,
+      "aten.baddbmm_63_s11_1_512": 1,
+      "aten.bmm_63_512_1_s11": 1,
+      "aten.bmm_63_s11_512_512": 4,
+      "aten.bmm_63_512_512_s11": 4,
+      "aten.baddbmm_63_s22_512_512": 4,
+      "aten.baddbmm_63_s22_1_512": 1,
+      "aten.baddbmm_60_s11_512_512": 4,
+      "aten.baddbmm_60_s11_1_512": 1,
+      "aten.bmm_60_512_1_s11": 1,
+      "aten.bmm_60_s11_512_512": 4,
+      "aten.bmm_60_512_512_s11": 4,
+      "aten.baddbmm_60_s22_512_512": 4,
+      "aten.baddbmm_60_s22_1_512": 1,
+      "aten.baddbmm_58_s11_512_512": 4,
+      "aten.baddbmm_58_s11_1_512": 1,
+      "aten.bmm_58_512_1_s11": 1,
+      "aten.bmm_58_s11_512_512": 4,
+      "aten.bmm_58_512_512_s11": 4
+    },
+    "unimplemented": {
+      "Dynamo recompile limit exceeded\n  Explanation: Dynamo attempted to recompile the code object too many times, exceeding the recompile_limit cache size limit (currently set to 8). Excessive recompilations can degrade performance due to the compilation overhead of each recompilation.\n  Hint: To monitor recompilations, enable TORCH_LOGS=recompiles. If recompilations are expected, consider increasing torch._dynamo.config.recompile_limit to an appropriate value.\n  Hint: See https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html for tips on dealing with recompilations.\n\n  Developer debug context: Limit type: recompile_limit\n\n For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0039.html": 1
+    }
+  },
+  "dynamo_training_compile_times": "TorchDynamo compilation metrics:\nFunction, Runtimes (s)\n_compile.compile_inner, 5.9199, 5.9907, 2.0480, 6.3166, 2.4346, 5.4697, 1.6483, 4.8631, 0.0035\ncompile_attempt_0, 5.8401, 5.8959, 1.9701, 6.2435, 2.3580, 5.4058, 1.5702, 4.8041\nbytecode_tracing, 0.6652, 0.4367, 0.4007, 1.1930, 0.7459, 0.9182, 0.7064, 0.8729\nget_fake_value, 0.0941, 0.1755, 0.1625, 0.8724, 0.4714, 0.6055, 0.4482, 0.5789\ncreate_proxy, 0.2809, 0.0217, 0.0173, 0.0246, 0.0218, 0.0260, 0.0207, 0.0243\nwrap_to_fake_tensor_and_record, 0.0230, 0.0287, 0.0388, 0.0967, 0.0734, 0.0794, 0.0690, 0.0740\nvariable_builder_call, 0.1180, 0.0747, 0.0778, 0.1400, 0.1151, 0.1279, 0.1074, 0.1188\ninsert_deferred_runtime_asserts, 0.0078, 0.0087, 0.0061, 0.0097, 0.0082, 0.0094, 0.0070, 0.0091\nOutputGraph.call_user_compiler, 5.1458, 5.4318, 1.5517, 5.0221, 1.5903, 4.4627, 0.8443, 3.9070\ninductor_codecache_torch_key, 0.2453\n_recursive_pre_grad_passes, 0.0108, 0.0019, 0.0013, 0.0016, 0.0013, 0.0016, 0.0012, 0.0014\npass.pre_grad_passes.group_batch_fusion_passes, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0000\npass.pre_grad_passes.efficient_conv_bn_eval_pass, 0.0004, 0.0004, 0.0002, 0.0003, 0.0002, 0.0003, 0.0002, 0.0003\npass.pre_grad_passes.apply_gumbel_max_trick_pass, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0000, 0.0000\ncreate_aot_dispatcher_function, 3.4528, 5.3900, 1.5126, 4.9804, 1.5492, 4.4235, 0.8064, 3.8722\naot_collect_metadata, 0.1453, 0.2769, 0.1099, 0.3006, 0.1216, 0.2877, 0.1103, 0.2789\naot_trace_joint_graph, 0.3405, 0.6184, 0.6276, 0.6129, 0.6109\n_recursive_joint_graph_passes, 0.3660, 0.0663, 0.0253, 0.0617, 0.0241, 0.0622, 0.0238, 0.0597\npass.joint_graph_passes.remove_noop_ops, 0.0014, 0.0030, 0.0016, 0.0030, 0.0015, 0.0030, 0.0015, 0.0028\npass.joint_graph_passes.constant_fold_uniform_value, 0.0173, 0.0122, 0.0068, 0.0108, 0.0068, 0.0099, 0.0070, 0.0101\npass.joint_graph_passes.pass_pattern_0, 0.0203, 0.0453, 0.0137, 0.0427, 0.0127, 0.0440, 0.0125, 0.0418\npass.joint_graph_passes.pass_pattern_1, 0.0006, 0.0007, 0.0001, 0.0006, 0.0000, 0.0006, 0.0000, 0.0006\nmin_cut_rematerialization_partition, 0.1174, 0.1049, 0.0936, 0.0941, 0.0934\ncompile_fx.<locals>.fw_compiler_base, 2.4393, 2.0204, 1.1853, 1.7992, 1.2134, 1.0835, 0.4905, 0.9763\ncompile_fx_inner, 2.4389, 2.7052, 2.0200, 2.1928, 1.1596, 1.7989, 1.9927, 1.1889, 1.0832, 2.1939, 0.4662, 0.9760, 1.7685\nfx_codegen_and_compile, 2.4365, 2.7025, 2.0176, 2.1904, 1.1578, 1.7969, 1.9904, 1.1873, 1.0812, 2.1918, 0.4648, 0.9739, 1.7667\nadditional_fake_tensor_prop, 0.0540, 0.0458, 0.0898, 0.0736, 0.0493, 0.0848, 0.0733, 0.0504, 0.0905, 0.0700, 0.0457, 0.0885, 0.0722\n_recursive_post_grad_passes, 0.0450, 0.0176, 0.0352, 0.0188, 0.0094, 0.0227, 0.0172, 0.0093, 0.0237, 0.0165, 0.0085, 0.0214, 0.0169\npass.post_grad_passes.remove_profiler_ops, 0.0009, 0.0001, 0.0012, 0.0001, 0.0001, 0.0007, 0.0001, 0.0001, 0.0008, 0.0001, 0.0001, 0.0007, 0.0001\npass.post_grad_passes.post_grad_custom_pre_pass, 0.0001, 0.0000, 0.0002, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0001, 0.0001, 0.0000\npass.post_grad_passes.remove_noop_ops, 0.0005, 0.0005, 0.0010, 0.0006, 0.0005, 0.0004, 0.0006, 0.0006, 0.0005, 0.0006, 0.0005, 0.0004, 0.0006\npass.post_grad_passes.remove_assert_ops, 0.0001, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000\npass.post_grad_passes.pass_pattern_0, 0.0001, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000, 0.0000, 0.0001, 0.0000\npass.post_grad_passes.pass_pattern_1, 0.0057, 0.0070, 0.0082, 0.0064, 0.0045, 0.0062, 0.0064, 0.0045, 0.0063, 0.0059, 0.0042, 0.0055, 0.0063\npass.post_grad_passes.pass_pattern_2, 0.0003, 0.0004, 0.0004, 0.0003, 0.0002, 0.0003, 0.0003, 0.0002, 0.0003, 0.0003, 0.0002, 0.0003, 0.0003\npass.post_grad_passes.stable_sort, 0.0034, 0.0003, 0.0045, 0.0003, 0.0002, 0.0031, 0.0002, 0.0002, 0.0034, 0.0002, 0.0002, 0.0031, 0.0003\npass.post_grad_passes.move_constructors_to_cuda, 0.0005, 0.0004, 0.0005, 0.0003, 0.0002, 0.0004, 0.0003, 0.0002, 0.0004, 0.0003, 0.0002, 0.0004, 0.0003\npass.post_grad_passes.reinplace_inplaceable_ops, 0.0018, 0.0016, 0.0026, 0.0015, 0.0012, 0.0015, 0.0015, 0.0012, 0.0017, 0.0016, 0.0011, 0.0016, 0.0014\npass.post_grad_passes.decompose_triton_kernel_wrapper_functional, 0.0002, 0.0001, 0.0002, 0.0001, 0.0001, 0.0002, 0.0001, 0.0001, 0.0002, 0.0001, 0.0001, 0.0002, 0.0001\npass.post_grad_passes.decompose_auto_functionalized, 0.0005, 0.0003, 0.0007, 0.0003, 0.0002, 0.0005, 0.0003, 0.0002, 0.0005, 0.0003, 0.0002, 0.0005, 0.0003\npass.post_grad_passes.decompose_scan_to_while_loop, 0.0002, 0.0001, 0.0002, 0.0001, 0.0001, 0.0002, 0.0001, 0.0001, 0.0002, 0.0001, 0.0001, 0.0001, 0.0001\npass.post_grad_passes.decompose_map_to_while_loop, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0002, 0.0000, 0.0000, 0.0002, 0.0001, 0.0000, 0.0001, 0.0000\nGraphLowering.run, 0.4879, 0.1347, 0.2005, 0.1682, 0.1128, 0.1789, 0.1414, 0.1032, 0.1739, 0.1457, 0.0943, 0.1685, 0.1424\nGraphLowering.compile_to_fn, 1.7686, 2.3691, 1.6006, 1.7953, 0.9161, 1.4234, 1.6388, 0.9542, 0.7023, 1.8474, 0.2479, 0.6122, 1.4343\nGraphLowering.compile_to_module, 1.7686, 2.3691, 1.6006, 1.7950, 0.9160, 1.4233, 1.6386, 0.9540, 0.7023, 1.8473, 0.2478, 0.6121, 1.4342\nGraphLowering.codegen, 0.5056, 0.5796, 1.1417, 0.7733, 0.2939, 0.6150, 0.6311, 0.2489, 0.6307, 0.9986, 0.2351, 0.5960, 0.6058\nScheduler.__init__, 0.1628, 0.1930, 0.3265, 0.1876, 0.0629, 0.1836, 0.1467, 0.0544, 0.1767, 0.1502, 0.0519, 0.1770, 0.1465\nScheduler.fused_nodes, 0.0456, 0.0709, 0.1967, 0.0424, 0.0042, 0.0694, 0.0325, 0.0042, 0.0674, 0.0328, 0.0039, 0.0692, 0.0328\nScheduler.codegen, 0.3210, 0.3734, 0.7898, 0.5631, 0.2210, 0.4066, 0.4649, 0.1839, 0.4281, 0.8288, 0.1730, 0.3967, 0.4282\nPythonWrapperCodegen.generate, 0.0181, 0.0106, 0.0227, 0.0177, 0.0083, 0.0225, 0.0161, 0.0087, 0.0239, 0.0160, 0.0086, 0.0203, 0.0277\nPyCodeCache.load_by_key_path, 1.2614, 1.7883, 0.4574, 1.0203, 0.6212, 0.8070, 1.0056, 0.7042, 0.0695, 0.8472, 0.0119, 0.0150, 0.8265\nasync_compile.precompile, 0.1573, 0.4453, 0.1301, 0.0050, 0.1813, 0.0684, 0.0593, 0.2019\nasync_compile.wait, 0.0002, 1.7826, 0.4523, 1.0143, 0.6151, 0.8015, 1.0002, 0.7007, 0.0640, 0.8413, 0.0081, 0.0104, 0.8174\nTritonBundler.collect, 0.0033, 0.0233, 0.0036, 0.0165, 0.0033, 0.0035, 0.0108, 0.0028, 0.0035, 0.0078, 0.0029, 0.0030, 0.0075\nbuild_guards, 0.0658, 0.0892, 0.0749, 0.0664, 0.0715, 0.0589, 0.0730, 0.0538\ngc, 0.0051, 0.0019, 0.0001, 0.0022, 0.0018, 0.0014, 0.0020, 0.0015\nCachingAutotuner.benchmark_all_configs, 0.0456, 0.0477, 0.0543, 0.0714, 0.0784, 0.1606, 0.3834, 0.3526, 0.1636, 0.1371, 0.1470, 0.0551, 0.0578, 0.0577, 0.0772, 0.0675, 0.0613, 0.0746, 0.0616, 0.0620, 0.0624, 0.1457, 0.0323, 0.1242, 0.0699, 0.0753, 0.0764, 0.0750, 0.0750, 0.0634, 0.0669, 0.0655, 0.0772, 0.0482, 0.0717, 0.0661, 0.0881, 0.0620, 0.0652, 0.0659, 0.1431, 0.0520, 0.1403, 0.0709, 0.0767, 0.0767, 0.0768, 0.0769, 0.0463, 0.0600, 0.0541, 0.0718, 0.0467, 0.0709, 0.0666, 0.0920, 0.0621, 0.0653, 0.0657, 0.1556, 0.0474, 0.1445, 0.0743, 0.0755, 0.0746, 0.0747, 0.0753, 0.0485, 0.0607, 0.0533, 0.0729, 0.0482, 0.0712, 0.0649, 0.0910, 0.0622, 0.0663, 0.0648, 0.1632, 0.0466, 0.1412\nbackward._backward_impl, 2.7276\ncompile_fx.<locals>.bw_compiler, 2.7055, 2.1932, 1.9930, 2.1942, 1.7688\npgo.dynamic_whitelist, 0.0001, 0.0000, 0.0001, 0.0000, 0.0000, 0.0000, 0.0000\npass.post_grad_passes.reorder_for_locality, 0.0006, 0.0005, 0.0005",
+  "config": {
+    "name": "diverse_california_compile",
+    "seed": 42,
+    "n_models": 64,
+    "max_ensemble_size": 64,
+    "widths": [
+      32,
+      64,
+      128,
+      256,
+      384,
+      512
+    ],
+    "depth_min": 1,
+    "depth_max": 4,
+    "embedding_dims": [
+      4,
+      8,
+      16,
+      32,
+      48,
+      64
+    ],
+    "init_scale": [
+      0.001,
+      20.0
+    ],
+    "dropout_max": 0.7,
+    "adamw_lr": [
+      3e-05,
+      0.01
+    ],
+    "muon_lr": [
+      0.0003,
+      0.15
+    ],
+    "weight_decay": [
+      0.0001,
+      2.0
+    ],
+    "batch_size": 256,
+    "max_epochs": 60,
+    "inference_batch_size": 1024,
+    "model_patience": 16,
+    "ensemble_patience": 32,
+    "profile_epoch": 3,
+    "compile_model": true
+  },
+  "sampled_models": [
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.015237346654284672
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00010971218936309723,
+        "muon_lr": 0.029163186205343875,
+        "weight_decay": 0.08137758426508636
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.022247875637248515,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.008717028940050052
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0005650298214979931,
+        "muon_lr": 0.000353786324134995,
+        "weight_decay": 0.0007164843355256307
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.34233348537773944
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003305340078639267,
+        "muon_lr": 0.00031236417015462745,
+        "weight_decay": 0.2923161251768826
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 4,
+        "dropout": 0.19450993917014928,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 13.091883613994339
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002119866336749109,
+        "muon_lr": 0.000533874901158303,
+        "weight_decay": 0.0002606033761975338
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.09462375714643737
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 6.1950173617195e-05,
+        "muon_lr": 0.0925483752803224,
+        "weight_decay": 0.0002182338003567777
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.001991401277720226
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0013976821738209018,
+        "muon_lr": 0.03661082519288362,
+        "weight_decay": 1.7276959402203216
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.19458152217706448,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 3.8684230705660254
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.717520988650045e-05,
+        "muon_lr": 0.002728891182513924,
+        "weight_decay": 0.07628576879716234
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 1.3677169484167855
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.751146282946929e-05,
+        "muon_lr": 0.003171466366166167,
+        "weight_decay": 1.802891588465568
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.5899963441328667,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.009663681947883652
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 3.614983153849661e-05,
+        "muon_lr": 0.0021306865736169696,
+        "weight_decay": 0.001417625571846066
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.14034877354436595
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.005117638205974719,
+        "muon_lr": 0.016298932816801,
+        "weight_decay": 0.00041161860456849156
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 2,
+        "dropout": 0.5229096681565805,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 7.270481156238431
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.000305323547685162,
+        "muon_lr": 0.0011723611142828716,
+        "weight_decay": 1.951817319197698
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 5.053932576998338
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.289896639976888e-05,
+        "muon_lr": 0.0008107890571801481,
+        "weight_decay": 0.08448315239990277
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.2671335005545757,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.18868469293402862
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00845345516482434,
+        "muon_lr": 0.06314512850272429,
+        "weight_decay": 0.00011204183674249205
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.5380191128602121,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.0030184865478153793
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00037495682650356987,
+        "muon_lr": 0.005031621084919209,
+        "weight_decay": 1.2658752670606954
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 8.418596838154293
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.004713397335108529,
+        "muon_lr": 0.0019169676978236904,
+        "weight_decay": 0.05599392911012249
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 1.9036268561243108
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0006885082451365382,
+        "muon_lr": 0.03789751775746325,
+        "weight_decay": 0.019101481510375044
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 3,
+        "dropout": 0.01363371967008261,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 6.017403777970774
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003761079746705423,
+        "muon_lr": 0.0020281153641380553,
+        "weight_decay": 0.00017747528350170415
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.12310042727061715
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 4.484727363611746e-05,
+        "muon_lr": 0.03388158229309334,
+        "weight_decay": 0.19673283581711876
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.1860119251739193
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0010173822495616127,
+        "muon_lr": 0.1202009254311571,
+        "weight_decay": 0.9892015695536152
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.2792946099982004,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.6239431475347194
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00038229150251649314,
+        "muon_lr": 0.007482434514769504,
+        "weight_decay": 0.00033146881525571604
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.014723982004941216,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.00976630689439815
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0001078209150582816,
+        "muon_lr": 0.00046636877410254714,
+        "weight_decay": 0.05180751358753478
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.002017249364327301
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00011955784765880455,
+        "muon_lr": 0.01917221152663335,
+        "weight_decay": 0.0008345241991605165
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 2.9721368942293287
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 9.067809350246048e-05,
+        "muon_lr": 0.0005479420305854292,
+        "weight_decay": 0.007144372089922254
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 4,
+        "dropout": 0.6046857238587222,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.787337824570365
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.009121174161680796,
+        "muon_lr": 0.0005530292944159273,
+        "weight_decay": 0.0053912095318766765
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.006578005323960367
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00040636738045599595,
+        "muon_lr": 0.004128260992733705,
+        "weight_decay": 0.0015777239650554822
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 1,
+        "dropout": 0.5656155713121918,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.0026369893561877405
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0013255732963093668,
+        "muon_lr": 0.008632804071524577,
+        "weight_decay": 0.00011573746971389786
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.12267527711392014
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00010384360887111957,
+        "muon_lr": 0.0036267446146741973,
+        "weight_decay": 0.00017872800762705487
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 1,
+        "dropout": 0.18564214072050636,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.0168603074562441
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0017160785119971179,
+        "muon_lr": 0.02810173890667028,
+        "weight_decay": 0.23402455681041795
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.018886403214447605
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.008337916123339966,
+        "muon_lr": 0.010972648994910711,
+        "weight_decay": 0.021478197156592348
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.32551076561734665
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0005568674045834689,
+        "muon_lr": 0.06006018498075162,
+        "weight_decay": 0.00047546974276420383
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.36246313408597597
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00151565604073851,
+        "muon_lr": 0.0012939858052195261,
+        "weight_decay": 0.00032782035983769695
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.002252231800280043
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.001366450925370623,
+        "muon_lr": 0.010061246001821017,
+        "weight_decay": 0.0022946486512016766
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 2,
+        "dropout": 0.1670801668310922,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.003655202290640183
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0012753854994213556,
+        "muon_lr": 0.005142291139665513,
+        "weight_decay": 0.9902291600390439
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 1,
+        "dropout": 0.43481147884516497,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 19.24157867287502
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 4.591442721569032e-05,
+        "muon_lr": 0.001128283792922028,
+        "weight_decay": 0.0013824038629097486
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.016816643517067714
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0003824791807653551,
+        "muon_lr": 0.008775062950333014,
+        "weight_decay": 0.0020004850315368658
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.6522292276052541,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 10.92360809761883
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 6.545177863746881e-05,
+        "muon_lr": 0.0006146951320377957,
+        "weight_decay": 0.0002886456060299254
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.19722939002052597,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 1.2203138550469863
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 9.789772207750348e-05,
+        "muon_lr": 0.01544935957901271,
+        "weight_decay": 0.0013658489693529397
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.5346584483340163
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003710786106011535,
+        "muon_lr": 0.0003945573176283927,
+        "weight_decay": 0.0027204245022883246
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.07949645996942388
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0018089837156460677,
+        "muon_lr": 0.009794720734497851,
+        "weight_decay": 0.00030281188461700774
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.32017772779144077
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.091594893797596e-05,
+        "muon_lr": 0.0006623581560720209,
+        "weight_decay": 0.0021175243322482085
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.011836815905424477
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 5.450760473984489e-05,
+        "muon_lr": 0.038250013381629915,
+        "weight_decay": 0.6348774052093573
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 15.80124946327416
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003331194526436857,
+        "muon_lr": 0.07178556988009388,
+        "weight_decay": 0.00012782237597824673
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 3,
+        "dropout": 0.5615645972559972,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 3.069425731442508
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00014133174090639547,
+        "muon_lr": 0.040014872465177605,
+        "weight_decay": 0.0002916906656559196
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 4,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 3.252096954717071
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0004349211241333728,
+        "muon_lr": 0.0019990435304635948,
+        "weight_decay": 0.2635147010356972
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.006771065463860426
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002019697622670736,
+        "muon_lr": 0.06456303214121073,
+        "weight_decay": 1.4408508896232601
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.47566268285218455,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.026563513410600516
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 3.5217137917677426e-05,
+        "muon_lr": 0.0698588802579772,
+        "weight_decay": 0.0013289064061564367
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.3680195265255564
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002234847643600785,
+        "muon_lr": 0.03978023260787523,
+        "weight_decay": 0.007532570142206535
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.6296533130378397,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.012461466074209615
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0018420464706909614,
+        "muon_lr": 0.00030316981860996665,
+        "weight_decay": 0.957032199773007
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.30190817973749084,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 9.125634527500276
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0011201257818746503,
+        "muon_lr": 0.018517576795203203,
+        "weight_decay": 0.0003435715711249112
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 3,
+        "dropout": 0.2283280334001799,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.018690541954139293
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 6.284242528946938e-05,
+        "muon_lr": 0.004091601206573674,
+        "weight_decay": 1.1079811061376543
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.28425261813071395,
+        "numerical_embeddings": {
+          "d_embedding": 4,
+          "init_scale": 0.020275672687104698
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00010171539337636466,
+        "muon_lr": 0.039615100380803625,
+        "weight_decay": 0.040669572923935755
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 4,
+        "dropout": 0.3095118595133652,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.15797002743095723
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0030173064594456686,
+        "muon_lr": 0.11686354111746095,
+        "weight_decay": 0.146349840900592
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.3608164069406515,
+        "numerical_embeddings": {
+          "d_embedding": 64,
+          "init_scale": 0.46074358692521034
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 5.160904667949206e-05,
+        "muon_lr": 0.11131143659185579,
+        "weight_decay": 0.0010237098624275495
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.0012736623916394915
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00012440255644881475,
+        "muon_lr": 0.00574777813202345,
+        "weight_decay": 0.4515931160279078
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 4,
+        "dropout": 0.6202958363356871,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.0068591734547042114
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.001713714977816558,
+        "muon_lr": 0.0064778428011379235,
+        "weight_decay": 0.0011204291341172532
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.00873458536653333
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003204740875771014,
+        "muon_lr": 0.022665550148221508,
+        "weight_decay": 0.009955039510507737
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.0037453765980875473
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00044602561708095904,
+        "muon_lr": 0.008140110174245579,
+        "weight_decay": 0.025348626902830892
+      }
+    },
+    {
+      "model": {
+        "d_block": 128,
+        "n_blocks": 4,
+        "dropout": 0.5813984188049904,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.08277283324992397
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 7.562360157566776e-05,
+        "muon_lr": 0.06342641650392876,
+        "weight_decay": 0.008625087826719753
+      }
+    },
+    {
+      "model": {
+        "d_block": 64,
+        "n_blocks": 3,
+        "dropout": 0.43872390588724686,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.07796599359727333
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0018936879794079417,
+        "muon_lr": 0.001288286298765917,
+        "weight_decay": 0.00278285340360682
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.009877853053502925
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00168994467282683,
+        "muon_lr": 0.02419498340911192,
+        "weight_decay": 0.00018890794058579923
+      }
+    },
+    {
+      "model": {
+        "d_block": 256,
+        "n_blocks": 3,
+        "dropout": 0.29104196387220915,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 3.8219931333266746
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002882199424845376,
+        "muon_lr": 0.03587376457065616,
+        "weight_decay": 1.1723065303326279
+      }
+    },
+    {
+      "model": {
+        "d_block": 32,
+        "n_blocks": 4,
+        "dropout": 0.00412725850879515,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.019246066184518986
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00028907483076471766,
+        "muon_lr": 0.07649534912871075,
+        "weight_decay": 0.39309188772919085
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.1535951442350053,
+        "numerical_embeddings": {
+          "d_embedding": 32,
+          "init_scale": 0.1226763320855344
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00028718438850758294,
+        "muon_lr": 0.01915980538665101,
+        "weight_decay": 0.2709156403110169
+      }
+    },
+    {
+      "model": {
+        "d_block": 512,
+        "n_blocks": 2,
+        "dropout": 0.6436791344682831,
+        "numerical_embeddings": {
+          "d_embedding": 48,
+          "init_scale": 0.19828129743717154
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0058236170065230864,
+        "muon_lr": 0.011874685109671995,
+        "weight_decay": 0.0710529054093059
+      }
+    }
+  ],
+  "selected_members": 18,
+  "depths": [
+    2,
+    3,
+    2,
+    2,
+    2,
+    3,
+    4,
+    3,
+    2,
+    2,
+    2,
+    2,
+    3,
+    4,
+    3,
+    1,
+    4,
+    4
+  ],
+  "linear_layers": [
+    {
+      "allocated": 4718592,
+      "useful": 1937408,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 4718592,
+      "useful": 2770944,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 4718592,
+      "useful": 1591296,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 4718592,
+      "useful": 526336,
+      "max_in": 512,
+      "max_out": 512
+    },
+    {
+      "allocated": 9216,
+      "useful": 6848,
+      "max_in": 512,
+      "max_out": 1
+    }
+  ],
+  "train_profile_wall_seconds": 865.2939776540734,
+  "inference_profile_10_forwards_seconds": 0.11245113401673734,
+  "torch": "2.12.1+cu126",
+  "cuda": "12.6",
+  "gpu": "Quadro RTX 4000",
+  "peak_memory_bytes": 1506865664,
+  "pid": 3961822
+}

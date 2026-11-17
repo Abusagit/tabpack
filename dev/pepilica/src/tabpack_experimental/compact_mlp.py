@@ -10,6 +10,7 @@ from torch import nn
 from torch.autograd.function import once_differentiable
 
 from tabpack_experimental.ragged import LinearPlan, Tile
+from tabpack_experimental.fixed_slot_matrix import CompactFixedSlotLinear
 
 # Triton annotations describe GPU compilation, not Python call signatures.
 triton: Any = _triton
@@ -865,11 +866,13 @@ class CompactFixedSlotMLP(nn.Module):
 
     Shapes and batch are fixed, while the optional active set can change between
     calls. Weights are compact by width but reserve a slot for every member at
-    each depth. The fused path combines linear, bias, ReLU and dropout.
+    each depth. The fused path combines linear, bias, ReLU and dropout. Optional
+    input_widths adds an unfused rectangular input block; depths then count the
+    square blocks after it, and may be zero.
     """
 
     def __init__(self, widths, batch, depths=3, *, device='cuda:0',
-                 dtype=torch.bfloat16, dropout=0.0, fused=False):
+                 dtype=torch.bfloat16, dropout=0.0, fused=False, input_widths=None):
         super().__init__()
         self.widths, self.batch = tuple(map(int, widths)), int(batch)
         self.depths = ((depths,) * len(self.widths) if isinstance(depths, int)
@@ -877,24 +880,44 @@ class CompactFixedSlotMLP(nn.Module):
         self.dropout = ((float(dropout),) * len(self.widths) if isinstance(dropout, (int, float))
                         else tuple(map(float, dropout)))
         if (not self.widths or min(self.widths) < 1 or self.batch < 1
-                or len(self.depths) != len(self.widths) or min(self.depths) < 1
+                or len(self.depths) != len(self.widths)
+                or min(self.depths) < (1 if input_widths is None else 0)
                 or len(self.dropout) != len(self.widths)
                 or any(not 0 <= p <= 1 for p in self.dropout)):
             raise ValueError('Expected positive widths, batch, depths and valid dropout')
         if dtype not in (torch.float16, torch.bfloat16, torch.float32):
             raise ValueError('Expected FP16, BF16 or FP32 parameters')
+        self.input_widths = None if input_widths is None else tuple(map(int, input_widths))
+        if self.input_widths is not None and (len(self.input_widths) != len(self.widths)
+                                              or min(self.input_widths) < 1):
+            raise ValueError('Expected one positive input width per candidate')
+        self.input_layer = (None if self.input_widths is None else CompactFixedSlotLinear(
+            tuple(zip(self.widths, self.input_widths)), device=device, dtype=dtype))
+        self.register_buffer('input_keep', torch.tensor(
+            [1 - p for h, p in zip(self.widths, self.dropout) for _ in range(h)],
+            device=device, dtype=torch.float32) if self.input_layer is not None else None,
+            persistent=False)
         self.blocks = nn.ModuleList(_FixedSlotCompactBlock(
             self.widths, self.batch, self.dropout, device=device, dtype=dtype, fused=fused
         ) for _ in range(max(self.depths)))
 
     def forward(self, x, active=None):
-        if (tuple(x.shape) != (self.batch, sum(self.widths)) or not x.is_contiguous()
-                or x.device != self.blocks[0].weight.device
+        expected_width = sum(self.widths if self.input_widths is None else self.input_widths)
+        parameter = self.input_layer.weight if self.input_layer is not None else self.blocks[0].weight
+        if (tuple(x.shape) != (self.batch, expected_width) or not x.is_contiguous()
+                or x.device != parameter.device
                 or x.dtype not in (torch.float16, torch.bfloat16)):
             raise ValueError('Expected contiguous FP16/BF16 input on the model device')
         active = tuple(range(len(self.widths))) if active is None else tuple(map(int, active))
         if len(set(active)) != len(active) or any(i < 0 or i >= len(self.widths) for i in active):
             raise ValueError('Invalid active members')
+        if self.input_layer is not None:
+            x = torch.relu(self.input_layer(x, active))
+            if self.training and any(self.dropout[i] > 0 for i in active):
+                q = self.input_keep
+                scale = torch.where(q > 0, 1 / q.clamp_min(1e-30), 0)
+                mask = torch.rand(x.shape, device=x.device) < q
+                x = x * (mask * scale).to(x.dtype)
         selected = [tuple(i for i in active if self.depths[i] > layer)
                     for layer in range(len(self.blocks))]
         count = sum(bool(ids) and block.training and block.stochastic
@@ -907,5 +930,10 @@ class CompactFixedSlotMLP(nn.Module):
                 x = block(x, ids, seed)
         return x
 
-    pack = CompactMLP.pack
+    def pack(self, padded):
+        widths = self.widths if self.input_widths is None else self.input_widths
+        if padded.shape != (len(widths), self.batch, max(widths)):
+            raise ValueError('Unexpected padded input shape')
+        return torch.cat([padded[i, :, :w] for i, w in enumerate(widths)], dim=1)
+
     unpack = CompactMLP.unpack

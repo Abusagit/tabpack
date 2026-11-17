@@ -1,4 +1,4 @@
-"""Grouped Muon/AdamW for square matrices in stable fixed slots (CUDA prototype)."""
+"""Grouped Muon/AdamW for dense matrices in stable fixed slots (CUDA prototype)."""
 
 import math
 from typing import Any
@@ -144,7 +144,17 @@ def _adam_bias(B, G, M, V, STEP, D, ACTIVE, H, BLOCK: tl.constexpr):
 
 
 class GroupedFixedMuonAdamW:
-    """Square FP32 master slots; active subsets share kernels and keep fixed offsets."""
+    """FP32 master slots, specified as widths or (output, input) matrix shapes.
+
+    Square packs retain their tuned backend. Rectangular packs share the generic
+    ragged GEMM backend and reserve independently sized Gram workspaces.
+    """
+
+    def __getattr__(self, name):
+        engine = self.__dict__.get('_rectangular')
+        if engine is not None:
+            return getattr(engine, name)
+        raise AttributeError(name)
 
     def __init__(
         self,
@@ -162,7 +172,19 @@ class GroupedFixedMuonAdamW:
         muon_newton_schulz_steps=5,
         muon_nesterov=True,
     ):
-        self.widths = tuple(map(int, widths))
+        from tabpack_experimental.fixed_slot_matrix import matrix_shapes
+        shapes = matrix_shapes(widths)
+        if any(h != d for h, d in shapes):
+            from tabpack_experimental.rectangular_fixed_optimizer import RectangularFixedMuonAdamW
+            self._rectangular = RectangularFixedMuonAdamW(
+                weight, bias, shapes, muon_lr=muon_lr, adamw_lr=adamw_lr,
+                weight_decay=weight_decay, muon_momentum=muon_momentum,
+                adamw_beta1=adamw_beta1, adamw_beta2=adamw_beta2,
+                adamw_eps=adamw_eps, muon_newton_schulz_steps=muon_newton_schulz_steps,
+                muon_nesterov=muon_nesterov)
+            return
+        self.shapes = shapes
+        self.widths = tuple(h for h, d in shapes)
         n = len(self.widths)
         if (
             not n
@@ -278,6 +300,8 @@ class GroupedFixedMuonAdamW:
 
     @torch.no_grad()
     def step(self, active):
+        if '_rectangular' in self.__dict__:
+            return self._rectangular.step(active)
         if (self.weight.data_ptr(), self.bias.data_ptr()) != self._ptr:
             raise RuntimeError('Fixed-slot storage changed; rebuild the optimizer')
         ids, chunks, tiles = self._tasks(active)
@@ -400,6 +424,8 @@ class GroupedFixedMuonAdamW:
             torch.autograd.graph.increment_version(self.bias)
 
     def zero_grad(self, *, set_to_none=True):
+        if '_rectangular' in self.__dict__:
+            return self._rectangular.zero_grad(set_to_none=set_to_none)
         for p in (self.weight, self.bias):
             if p.grad is not None:
                 if set_to_none:
@@ -408,6 +434,8 @@ class GroupedFixedMuonAdamW:
                     p.grad.zero_()
 
     def state_dict(self):
+        if '_rectangular' in self.__dict__:
+            return self._rectangular.state_dict()
         return {
             'widths': self.widths,
             'hyper': self.hyper.clone(),
@@ -420,6 +448,8 @@ class GroupedFixedMuonAdamW:
         }
 
     def load_state_dict(self, state):
+        if '_rectangular' in self.__dict__:
+            return self._rectangular.load_state_dict(state)
         if (
             tuple(state['widths']) != self.widths
             or state['steps'] != self.steps

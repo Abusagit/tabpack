@@ -19,7 +19,10 @@ Benchmarking process can be run with:
 CUDA_VISIBLE_DEVICES=0 .venv/bin/python -m dev.nosorozhek.scripts.run_benchmark
 ```
 
-Recent benchmarked results can be found in [`benchmarking/benchmark_summary.csv`](benchmarking/benchmark_summary.csv)
+Script has several useful flags:
+- `--trace` captures the traces for each case
+- `--aggregate-only` skips the benchmarking part and only composes summary csv table using existing cached runs
+- `--case` allows to specify which cases to run
 
 ## Profiling Datasets
 
@@ -30,3 +33,10 @@ CUDA_VISIBLE_DEVICES=0 .venv/bin/python -u -m dev.nosorozhek.scripts.run_researc
 ```
 
 The datasets, batch sizes and whether to use `torch.compile` or not can be configured at the top of the `scripts/run_research.py` script.
+
+## Testing
+
+With pytest installed, run the tests from the repository root using
+```bash
+CUDA_VISIBLE_DEVICES=0 .venv/bin/python -m pytest dev/nosorozhek/tests/
+```

@@ -434,8 +434,13 @@ def main(argv=None):
     finally:
         tabpackage._instrument.set_instrumenter(None)
     torch.cuda.synchronize()
+    ensemble_metrics = trained.load_ensemble_metrics('greedy')
     report = {
         'name': name,
+        'ensemble_metrics': {
+            dataset: {metric: value.item() for metric, value in metrics.items()}
+            for dataset, metrics in ensemble_metrics.items()
+        },
         'mode': args.mode,
         'variant': args.variant,
         'profile': args.profile,

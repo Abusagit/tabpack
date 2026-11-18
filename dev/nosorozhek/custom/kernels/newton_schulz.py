@@ -9,6 +9,8 @@ from torch import Tensor
 
 from tabpackage import nn
 
+from .utils import _locate_matrix
+
 Options = tuple[int, int, int, int, int]
 
 
@@ -38,6 +40,7 @@ def _grouped_gemm(
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
+    SEARCH_STEPS: tl.constexpr,
 ):
     """Write one tile of D = ALPHA * (A @ B) + BETA * C per program.
 
@@ -47,13 +50,7 @@ def _grouped_gemm(
     Binary search picks the matrix, then the loop reduces over its valid K.
     """
     pid = tl.program_id(0)
-    low, high = 0, count
-    while low < high:
-        mid = (low + high) // 2
-        right = tl.load(prefix + mid) <= pid
-        low = tl.where(right, mid + 1, low)
-        high = tl.where(right, high, mid)
-    matrix = low - 1
+    matrix = _locate_matrix(prefix, count, pid, SEARCH_STEPS)
     local = pid - tl.load(prefix + matrix)
     m = tl.load(sizes + matrix)
     n = tl.load(sizes + count + matrix)
@@ -178,6 +175,7 @@ class NewtonSchulz:
             block_m,
             block_n,
             block_k,
+            SEARCH_STEPS=lhs.shape[0].bit_length(),
             num_warps=num_warps,
             num_stages=num_stages,
         )

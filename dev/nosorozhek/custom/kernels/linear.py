@@ -32,6 +32,7 @@ def _packed_matmul(
     TRANSPOSE_RHS: tl.constexpr,
     bias_ptr,
     HAS_BIAS: tl.constexpr,
+    SEARCH_STEPS: tl.constexpr,
 ):
     """Multiply packed matrices and optionally add column bias from bias_ptr.
 
@@ -50,7 +51,7 @@ def _packed_matmul(
     accumulates over MAX_K in BLOCK_K steps with padding masked.
     """
     pid = tl.program_id(0)
-    matrix = _locate_matrix(prefix_ptr, n_matrices, pid)
+    matrix = _locate_matrix(prefix_ptr, n_matrices, pid, SEARCH_STEPS)
     local_id = pid - tl.load(prefix_ptr + matrix)
     n = tl.load(col_sizes_ptr + matrix)
     column_tiles = tl.cdiv(n, BLOCK_N)
@@ -140,6 +141,8 @@ class _TritonLinearFunction(Function):
         ) = layout
         block_m, block_n, block_k, num_warps, num_stages = options
         max_out, max_in = weight.shape[-2:]
+        # The Triton kernel computes offsets for contiguous row-major buffers.
+        x, weight, bias = x.contiguous(), weight.contiguous(), bias.contiguous()
         output = torch.zeros(
             x.shape[0], x.shape[1], max_out, dtype=x.dtype, device=x.device
         )
@@ -158,6 +161,7 @@ class _TritonLinearFunction(Function):
             BLOCK_M=block_m,
             BLOCK_N=block_n,
             BLOCK_K=block_k,
+            SEARCH_STEPS=x.shape[0].bit_length(),
             MAX_K=max_in,
             TRANSPOSE_LHS=False,
             TRANSPOSE_RHS=True,
@@ -181,6 +185,7 @@ class _TritonLinearFunction(Function):
         x, weight, bias, in_sizes, out_sizes, prefix_x, prefix_weight = (
             ctx.saved_tensors
         )
+        grad_output = grad_output.contiguous()
         grad_x = torch.zeros_like(x)
         grad_weight = torch.zeros_like(weight)
         _packed_matmul[(ctx.total_x,)](
@@ -198,6 +203,7 @@ class _TritonLinearFunction(Function):
             BLOCK_M=ctx.block_m,
             BLOCK_N=ctx.block_n,
             BLOCK_K=ctx.block_k,
+            SEARCH_STEPS=x.shape[0].bit_length(),
             MAX_K=ctx.max_out,
             TRANSPOSE_LHS=False,
             TRANSPOSE_RHS=False,
@@ -221,6 +227,7 @@ class _TritonLinearFunction(Function):
             BLOCK_M=ctx.block_m,
             BLOCK_N=ctx.block_n,
             BLOCK_K=ctx.block_k,
+            SEARCH_STEPS=x.shape[0].bit_length(),
             MAX_K=x.shape[1],
             TRANSPOSE_LHS=True,
             TRANSPOSE_RHS=False,

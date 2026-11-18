@@ -1,0 +1,528 @@
+{
+  "experiment": "cuBLAS grouped GEMM for actual-size square hidden Muon updates",
+  "backend_option": "optimizer={'type': tabpackage.optim.MuonAdamWPack, 'muon_backend': 'grouped'}",
+  "default": "padded",
+  "algorithm": "Unchanged five-iteration BF16 Newton-Schulz, coefficients 3.4445/-4.7750/2.0315; unchanged normalization, LR, momentum, Nesterov, weight decay and muon_update_scale.",
+  "covered_layers": "Square hidden layers after the first backbone block. First block, rectangular groups and AdamW parameters use the original implementation.",
+  "padding": "Updates must be zero outside each [:width, :width]. Every grouped call checks this and raises on nonzero padding. Nonzero parameter padding is retained and decayed identically to the original optimizer.",
+  "memory_and_streams": "Persistent padded BF16 workspaces and device pointer arrays, actual GEMM sizes and padded leading dimensions, no matrix gather/scatter. Plan rebuilds on width identity/version, active member set, shape, device or stream change. Runtime cache is per parameter; replacement/removal invalidate it. Output aliases a workspace and must be consumed before its next call.",
+  "preparation": "Normalization and the strict padding check still scan padded tensors; pointer metadata is reused. The synchronizing padding check, workspace copies and skip-zero detection are included in the main measurements.",
+  "timing_protocol": "8 warmups, 15 interleaved paired samples, CUDA events and wall time; median/p10/p90 and raw samples saved. Each optimizer/train sample starts from identical weights, optimizer state and dropout RNG. Optimizer gradient restoration and state reset are outside timing. Backend preparation is inside optimizer.step. NS samples average 3 calls; optimizer/train samples measure one step. Compilation excluded and recorded separately. No profiler.",
+  "training_protocol": "Native TabPack, 64 sampled diverse models, California Housing random 64/16/20 split, historical sampled width/depth/embedding/dropout/LR distribution, batch 256. FP32 training/parameters, BF16 NS for both. Paired 60-step smoke training; no online ensemble or early stopping. Validation RMSE is per model in original target units, not an ensemble RMSE.",
+  "limitations": [
+    "Single shared GPU per hardware type, one seed for timing/training and three NS correctness seeds; no inference about converged quality or other packs.",
+    "Timing covers forward/loss/backward/optimizer on a preloaded batch; excludes shuffling, CPU data preparation, transfers, validation and ensemble selection.",
+    "Historical 86% sum of Muon kernel durations motivated this experiment; it is not directly comparable to these wall/event times.",
+    "Experimental source-checkout extension requires compiler, CUDA headers, Ninja and an exported grouped API; unsupported environments raise rather than change precision.",
+    "GPU numbers in CUDA enumeration differ from nvidia-smi; match the recorded UUID."
+  ],
+  "toolchain": {
+    "headers_toolkit": "CUDA 13.3.73",
+    "compiler": "GCC 15.2.0",
+    "torch": "2.7.1+cu126",
+    "runtime_cuda": "12.6",
+    "cublas": 120604,
+    "driver": "610.57.04",
+    "python": "3.11.17",
+    "ninja": "1.13.2"
+  },
+  "hardware_results": [
+    {
+      "run_id": "20261110T150835Z-4c6b8447",
+      "gpu": "NVIDIA RTX A4000",
+      "uuid": "5a9b7750-9f85-49a5-3aae-fe07b1b7661d",
+      "capability": [
+        8,
+        6
+      ],
+      "grouped_bf16_supported": true,
+      "cublas": 120604,
+      "build_and_load_seconds": 21.01883346727118,
+      "first_ns_plan_and_call_seconds": [
+        0.5739414477720857,
+        0.002099663019180298,
+        0.0020097559317946434
+      ],
+      "first_optimizer_step_and_setup_seconds": {
+        "padded": 0.03731861198320985,
+        "grouped": 0.0344326957128942
+      },
+      "peak_allocated_gib": 3.7673277854919434,
+      "covered_layers": [
+        {
+          "block": 0,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": false,
+          "active_members": 64
+        },
+        {
+          "block": 1,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": true,
+          "active_members": 44
+        },
+        {
+          "block": 2,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": true,
+          "active_members": 27
+        },
+        {
+          "block": 3,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": true,
+          "active_members": 12
+        }
+      ],
+      "timings": [
+        {
+          "scope": "newton_schulz",
+          "skip_zero_updates": false,
+          "cuda_ms": {
+            "padded": {
+              "median": 7.3362776438395185,
+              "p10": 7.22705078125,
+              "p90": 7.433898671468099
+            },
+            "grouped": {
+              "median": 5.689002354939778,
+              "p10": 5.610077667236328,
+              "p90": 5.7511850992838545
+            }
+          },
+          "speedup": 1.289554334156569,
+          "grouped_time_reduction_percent": 22.45382970590003
+        },
+        {
+          "scope": "optimizer",
+          "skip_zero_updates": false,
+          "cuda_ms": {
+            "padded": {
+              "median": 37.991424560546875,
+              "p10": 36.943871307373044,
+              "p90": 38.98687973022461
+            },
+            "grouped": {
+              "median": 31.61292839050293,
+              "p10": 31.210483169555665,
+              "p90": 31.875852584838867
+            }
+          },
+          "speedup": 1.2017685957862783,
+          "grouped_time_reduction_percent": 16.789305070354878
+        },
+        {
+          "scope": "train_step",
+          "skip_zero_updates": false,
+          "cuda_ms": {
+            "padded": {
+              "median": 59.17593765258789,
+              "p10": 58.74278335571289,
+              "p90": 59.94451141357422
+            },
+            "grouped": {
+              "median": 54.32217788696289,
+              "p10": 53.816524505615234,
+              "p90": 54.70494842529297
+            }
+          },
+          "speedup": 1.0893513469898983,
+          "grouped_time_reduction_percent": 8.202252398805443
+        },
+        {
+          "scope": "newton_schulz",
+          "skip_zero_updates": true,
+          "cuda_ms": {
+            "padded": {
+              "median": 5.8023255666097,
+              "p10": 5.786009724934895,
+              "p90": 5.93169059753418
+            },
+            "grouped": {
+              "median": 5.035039901733398,
+              "p10": 4.997461318969727,
+              "p90": 5.0865983963012695
+            }
+          },
+          "speedup": 1.15238919250911,
+          "grouped_time_reduction_percent": 13.223760991485122
+        },
+        {
+          "scope": "optimizer",
+          "skip_zero_updates": true,
+          "cuda_ms": {
+            "padded": {
+              "median": 27.641855239868164,
+              "p10": 26.96581153869629,
+              "p90": 28.814111709594727
+            },
+            "grouped": {
+              "median": 27.7893123626709,
+              "p10": 27.64574775695801,
+              "p90": 27.892102813720705
+            }
+          },
+          "speedup": 0.9946937469744371,
+          "grouped_time_reduction_percent": -0.5334559548306084
+        },
+        {
+          "scope": "train_step",
+          "skip_zero_updates": true,
+          "cuda_ms": {
+            "padded": {
+              "median": 49.820640563964844,
+              "p10": 49.50093994140625,
+              "p90": 50.04567108154297
+            },
+            "grouped": {
+              "median": 50.378753662109375,
+              "p10": 50.097765350341795,
+              "p90": 50.626355743408205
+            }
+          },
+          "speedup": 0.9889216572945055,
+          "grouped_time_reduction_percent": -1.120244725532915
+        }
+      ],
+      "max_ns_relative_l2": 0.006347982212901115,
+      "max_ns_absolute_error": 0.005859375,
+      "momentum_exact_with_identical_gradients": true,
+      "five_step_parameter_relative_l2": [
+        5.367481571738608e-05,
+        5.367481571738608e-05
+      ],
+      "five_step_parameter_max_abs": [
+        6.346777081489563e-05,
+        6.346777081489563e-05
+      ],
+      "nonzero_padding_rejected": true,
+      "replacement_removal_stream_address_checks_passed": true,
+      "training": {
+        "padded": {
+          "validation_rmse_median": 1.1651755571365356,
+          "initial_mean_loss": 0.9334728913381696,
+          "final_mean_loss": 0.8463901057839394,
+          "wall_seconds": 3.8326453142799437,
+          "parameters_and_optimizer_finite": true
+        },
+        "grouped": {
+          "validation_rmse_median": 1.165243148803711,
+          "initial_mean_loss": 0.9334728913381696,
+          "final_mean_loss": 0.8462841266300529,
+          "wall_seconds": 3.3508061240427196,
+          "parameters_and_optimizer_finite": true
+        }
+      },
+      "validation_rmse_mean_delta": 0.00020418502390384674,
+      "validation_rmse_max_abs_delta": 0.005595684051513672,
+      "source_hashes": {
+        "dev/veleboks/grouped_gemm/experiment.json": "c06681e87a8e5abbbf40ca0a66ddccd05e4b05ed670c9a96d2eb933af629154f",
+        "dev/veleboks/grouped_gemm/experiment.py": "f296cc2ea549988fbe6a5966eb60643492fd4c54832796dd7a6cb0c51b8b594d",
+        "dev/veleboks/grouped_gemm/grouped.cpp": "8f88da13116b9cc392dd27176361d277d5cb8715edc374bb6bda7d158235aec7",
+        "src/tabpackage/_muon_grouped.py": "56bf825a9960311ebc6992dad2c76a0f716a9a2e08cc642823b470fce72149f8",
+        "src/tabpackage/_training.py": "d3899096ee49f43a49b4e2abe1857cc4849b628ea78625a558e9c52f6daf7147",
+        "src/tabpackage/optim.py": "ec05f904445eb91a88cc94cb33df5eff74063766bafeaec64a404828ae7a0491"
+      }
+    },
+    {
+      "run_id": "20261110T151003Z-9acb560a",
+      "gpu": "Quadro RTX 4000",
+      "uuid": "e83bd31b-fcb9-b8de-f617-2d717619413b",
+      "capability": [
+        7,
+        5
+      ],
+      "grouped_bf16_supported": true,
+      "cublas": 120604,
+      "build_and_load_seconds": 23.51469940925017,
+      "first_ns_plan_and_call_seconds": [
+        0.21092715812847018,
+        0.013097985181957483,
+        0.012517500203102827
+      ],
+      "first_optimizer_step_and_setup_seconds": {
+        "padded": 0.256146936211735,
+        "grouped": 0.20319428574293852
+      },
+      "peak_allocated_gib": 3.7673277854919434,
+      "covered_layers": [
+        {
+          "block": 0,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": false,
+          "active_members": 64
+        },
+        {
+          "block": 1,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": true,
+          "active_members": 44
+        },
+        {
+          "block": 2,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": true,
+          "active_members": 27
+        },
+        {
+          "block": 3,
+          "shape": [
+            64,
+            512,
+            512
+          ],
+          "grouped": true,
+          "active_members": 12
+        }
+      ],
+      "timings": [
+        {
+          "scope": "newton_schulz",
+          "skip_zero_updates": false,
+          "cuda_ms": {
+            "padded": {
+              "median": 64.04185485839844,
+              "p10": 63.75088297526042,
+              "p90": 64.3074239095052
+            },
+            "grouped": {
+              "median": 43.91663106282552,
+              "p10": 42.90857747395833,
+              "p90": 44.45211486816407
+            }
+          },
+          "speedup": 1.4582597368815131,
+          "grouped_time_reduction_percent": 31.425110718718805
+        },
+        {
+          "scope": "optimizer",
+          "skip_zero_updates": false,
+          "cuda_ms": {
+            "padded": {
+              "median": 262.00103759765625,
+              "p10": 260.24254150390624,
+              "p90": 263.1135009765625
+            },
+            "grouped": {
+              "median": 203.8823699951172,
+              "p10": 202.53243103027344,
+              "p90": 205.79639282226563
+            }
+          },
+          "speedup": 1.2850597999421478,
+          "grouped_time_reduction_percent": 22.18260970851169
+        },
+        {
+          "scope": "train_step",
+          "skip_zero_updates": false,
+          "cuda_ms": {
+            "padded": {
+              "median": 296.474609375,
+              "p10": 295.6106262207031,
+              "p90": 297.9191955566406
+            },
+            "grouped": {
+              "median": 236.8360595703125,
+              "p10": 235.3803283691406,
+              "p90": 237.7724578857422
+            }
+          },
+          "speedup": 1.251813638146525,
+          "grouped_time_reduction_percent": 20.115904674066996
+        },
+        {
+          "scope": "newton_schulz",
+          "skip_zero_updates": true,
+          "cuda_ms": {
+            "padded": {
+              "median": 46.62039693196615,
+              "p10": 46.46355183919271,
+              "p90": 47.12749532063802
+            },
+            "grouped": {
+              "median": 31.28026580810547,
+              "p10": 30.176289367675782,
+              "p90": 31.90120137532552
+            }
+          },
+          "speedup": 1.4904092317491011,
+          "grouped_time_reduction_percent": 32.904334011241396
+        },
+        {
+          "scope": "optimizer",
+          "skip_zero_updates": true,
+          "cuda_ms": {
+            "padded": {
+              "median": 160.53500366210938,
+              "p10": 159.45031127929687,
+              "p90": 161.84587707519532
+            },
+            "grouped": {
+              "median": 132.2414093017578,
+              "p10": 131.730224609375,
+              "p90": 133.16014099121094
+            }
+          },
+          "speedup": 1.2139541200426052,
+          "grouped_time_reduction_percent": 17.624563936163927
+        },
+        {
+          "scope": "train_step",
+          "skip_zero_updates": true,
+          "cuda_ms": {
+            "padded": {
+              "median": 193.64649963378906,
+              "p10": 192.71934814453124,
+              "p90": 194.23963623046876
+            },
+            "grouped": {
+              "median": 165.650146484375,
+              "p10": 164.79290466308595,
+              "p90": 166.27206726074218
+            }
+          },
+          "speedup": 1.169008924794732,
+          "grouped_time_reduction_percent": 14.457453763615058
+        }
+      ],
+      "max_ns_relative_l2": 0.0,
+      "max_ns_absolute_error": 0.0,
+      "momentum_exact_with_identical_gradients": true,
+      "five_step_parameter_relative_l2": [
+        0.0,
+        0.0
+      ],
+      "five_step_parameter_max_abs": [
+        0.0,
+        0.0
+      ],
+      "nonzero_padding_rejected": true,
+      "replacement_removal_stream_address_checks_passed": true,
+      "training": {
+        "padded": {
+          "validation_rmse_median": 1.165244221687317,
+          "initial_mean_loss": 0.9334728913381696,
+          "final_mean_loss": 0.8462917134165764,
+          "wall_seconds": 18.56669643893838,
+          "parameters_and_optimizer_finite": true
+        },
+        "grouped": {
+          "validation_rmse_median": 1.165244221687317,
+          "initial_mean_loss": 0.9334728913381696,
+          "final_mean_loss": 0.8462917134165764,
+          "wall_seconds": 15.055020336061716,
+          "parameters_and_optimizer_finite": true
+        }
+      },
+      "validation_rmse_mean_delta": 0.0,
+      "validation_rmse_max_abs_delta": 0.0,
+      "source_hashes": {
+        "dev/veleboks/grouped_gemm/experiment.json": "c06681e87a8e5abbbf40ca0a66ddccd05e4b05ed670c9a96d2eb933af629154f",
+        "dev/veleboks/grouped_gemm/experiment.py": "f296cc2ea549988fbe6a5966eb60643492fd4c54832796dd7a6cb0c51b8b594d",
+        "dev/veleboks/grouped_gemm/grouped.cpp": "8f88da13116b9cc392dd27176361d277d5cb8715edc374bb6bda7d158235aec7",
+        "src/tabpackage/_muon_grouped.py": "56bf825a9960311ebc6992dad2c76a0f716a9a2e08cc642823b470fce72149f8",
+        "src/tabpackage/_training.py": "d3899096ee49f43a49b4e2abe1857cc4849b628ea78625a558e9c52f6daf7147",
+        "src/tabpackage/optim.py": "b5fd1519eedc66c3fbefc599b7699b27e9c42a9550eb6751fcabe5864a0df6b2"
+      }
+    }
+  ],
+  "superseded_runs": {
+    "20261110T144046Z-43b5d1d8": "Probe stopped before compilation: Ninja missing; subsequently installed.",
+    "20261110T144147Z-32e9424f": "Initial successful A4000 six-width probe.",
+    "20261110T150119Z-4ba29041": "Correctness passed, benchmark hit OOM: runtime cache keyed by reloaded group identity retained obsolete plans. Fixed to parameter identity, with removal invalidation. Incomplete timings excluded.",
+    "20261110T150402Z-93380c63": "Complete preliminary A4000 series; optimizer timings included external gradient restoration and train/optimizer samples averaged 3 evolving steps. Superseded by strict one-step paired timing.",
+    "20261110T150558Z-b39d04bc": "Successful unchanged-BF16 grouped probe on Quadro RTX 4000.",
+    "20261110T150654Z-17d7eab5": "Initial FP64 reference and breakdown/lifecycle checks; superseded by final diagnostics including setup timing."
+  },
+  "diagnostics": {
+    "run_id": "20261110T151338Z-57a2ce02",
+    "metadata_and_workspace_setup_wall_ms": {
+      "median": 0.4425528459250927,
+      "p10": 0.43762093409895897,
+      "p90": 0.4821442998945713,
+      "minimum": 0.4363781772553921,
+      "maximum": 4.614615812897682,
+      "samples": [
+        0.4884782247245312,
+        4.614615812897682,
+        0.4582260735332966,
+        0.44887885451316833,
+        0.4425528459250927,
+        0.44233212247490883,
+        0.44660596176981926,
+        0.44139567762613297,
+        0.4411619156599045,
+        0.4380992613732815,
+        0.4383521154522896,
+        0.43730204924941063,
+        0.4487307742238045,
+        0.4363781772553921,
+        0.4726434126496315
+      ]
+    },
+    "breakdown_cuda_ms": {
+      "padding_guard": {
+        "median": 0.4745386838912964,
+        "p10": 0.4707861264546712,
+        "p90": 0.4794922749201457
+      },
+      "normalization": {
+        "median": 0.5785599946975708,
+        "p10": 0.577672521273295,
+        "p90": 0.5812906821568807
+      },
+      "grouped_iterations_including_workspace_copies": {
+        "median": 4.841813405354817,
+        "p10": 4.562329546610514,
+        "p90": 4.853282038370768
+      },
+      "padded_iterations": {
+        "median": 7.178581237792969,
+        "p10": 7.160422134399414,
+        "p90": 7.261525217692057
+      }
+    },
+    "metadata_mutation_and_repeated_state_load_passed": true,
+    "fp64_reference_relative_l2_ranges": {
+      "padded_vs_fp64": [
+        0.01013912819325924,
+        0.014400425367057323
+      ],
+      "grouped_vs_fp64": [
+        0.010168851353228092,
+        0.014400425367057323
+      ]
+    },
+    "interpretation": "A4000 grouped output matches standalone actual-width native NS exactly for widths 32/64/128/256 in these seeds; larger shapes can differ due to GEMM kernel rounding. Both BF16 paths differ by about 1% from the FP64 iteration initialized with identical rounded normalization. Numerical differences are reported, without choosing pass tolerances from observed errors."
+  },
+  "interpretation": "Actual-size grouped GEMM reduces isolated NS work, but full-step gains depend on hardware and zero skipping. On A4000, the baseline zero-skip optimization already removes much of the wasted work; grouped metadata/guard/copies and the unchanged first block/forward/backward limit the remaining gain. The breakdown measures preparation cost directly; it does not identify individual cuBLAS kernels because primary measurements intentionally omit profiling. Use the per-hardware paired one-step table for conclusions; do not mix runs or compare historical profiler times.",
+  "summary_script_sha256": "2bc09d9ce486558ab2e00ed0621460506680f5636a33603f8db7007f9f7cb4d9"
+}

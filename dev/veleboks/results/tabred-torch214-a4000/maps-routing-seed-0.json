@@ -1,0 +1,464 @@
+{
+  "config": {
+    "dataset": "maps-routing",
+    "preprocessing_seed": 0,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "n_models": 16,
+    "width": 384,
+    "embedding_dims": [
+      8,
+      12,
+      16,
+      20
+    ],
+    "batch_size": 1024,
+    "eval_batch_size": 256,
+    "inference_batch_size": 1024,
+    "max_epochs": 5,
+    "compile_model": false,
+    "control_note": "16-model control for RTX A4000 16GB; 64-model Maps run OOM at first forward; batch size unchanged"
+  },
+  "seed": 0,
+  "dataset": {
+    "source": "https://github.com/yandex-research/tabred",
+    "split": "default",
+    "sha256": {
+      "info.json": "877b2b02aeb735d7d1ade443ff7acee81e4717c9c8122e3fc0c19bb676a8a66d",
+      "splits/default/test.npy": "9339ea5fde283629d02c9ac86b5c28ec5abd88214a6886d286c9e1a93be10394",
+      "splits/default/train.npy": "54524ac0a043ab848d4b4c9e8b2718e6669218a9fce14440c95012486f04444b",
+      "splits/default/val.npy": "955e3cfa522b2e0c58a102a8023a6cc297038f1fabc96a08e0e16dbce72edede",
+      "x_cat.npy": "48fd8185df40c2ee98ea23774dd12b1877a0ad2d683fe1a41448cf57e384edd4",
+      "x_num.npy": "74e82d1be1feddf0e0a831d86586abd26af1475c30f8775a80f86793df875122",
+      "y.npy": "590cbf5bac17af3944bf66e21235b2194f4df944f5b1e57a9061e7ea0d8de181"
+    },
+    "split_sizes": {
+      "train": 160019,
+      "val": 59975,
+      "test": 59951
+    },
+    "n_num": 984,
+    "categorical_cardinalities": [
+      8,
+      8
+    ],
+    "target_mean": 4.834228992462158,
+    "target_std": 0.37708914279937744
+  },
+  "sampled_models": [
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.020242189090388774,
+        "numerical_embeddings": {
+          "d_embedding": 20,
+          "init_scale": 0.16398435363483171
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.002146101668565086,
+        "muon_lr": 0.0040422712442286885,
+        "weight_decay": 0.026902389885611576
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 12,
+          "init_scale": 0.07006700163436128
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0019234844159779104,
+        "muon_lr": 0.017247970207590176,
+        "weight_decay": 0.005643116602388946
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.019782903565771025
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00013344004593132187,
+        "muon_lr": 0.05022820435432051,
+        "weight_decay": 0.009785694554433235
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.20068527428472382
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0010911353949367235,
+        "muon_lr": 0.06699187087786573,
+        "weight_decay": 0.7939974420688638
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.43265496388582003,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.015375836918315651
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0036344969423783547,
+        "muon_lr": 0.0679186368230166,
+        "weight_decay": 0.0019046518069350796
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 20,
+          "init_scale": 3.0492275514934173
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00036811762011515166,
+        "muon_lr": 0.028877337769750617,
+        "weight_decay": 0.1291004150492543
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 12,
+          "init_scale": 0.05198137771290028
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0044037419594001115,
+        "muon_lr": 0.040397913836579195,
+        "weight_decay": 0.02207540674483639
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.4375436436680728,
+        "numerical_embeddings": {
+          "d_embedding": 20,
+          "init_scale": 0.02124093049306835
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0008641447891798429,
+        "muon_lr": 0.025889449727497044,
+        "weight_decay": 0.04388567009025527
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.21625545876511668
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0010305604983141883,
+        "muon_lr": 0.005885756514016358,
+        "weight_decay": 0.05332772324885185
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 12,
+          "init_scale": 2.913410252269569
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00011376774339647339,
+        "muon_lr": 0.09174860738553631,
+        "weight_decay": 0.006027935906608679
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 12,
+          "init_scale": 4.2688521403762545
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.003705071971862978,
+        "muon_lr": 0.04840836853954373,
+        "weight_decay": 0.49490217684317955
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.4189326156127579,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.36759559812178966
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0002512524956416348,
+        "muon_lr": 0.0026940310090119456,
+        "weight_decay": 0.10925040976553847
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.2252815533155776,
+        "numerical_embeddings": {
+          "d_embedding": 16,
+          "init_scale": 0.01766521650787461
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0010992592141545225,
+        "muon_lr": 0.009394818708216866,
+        "weight_decay": 0.07770375765433568
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 1,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 1.5648317972937844
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0001581275895177263,
+        "muon_lr": 0.0027600762097349397,
+        "weight_decay": 0.2419629747191266
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 2,
+        "dropout": 0.40795654826682975,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 2.2354014563727924
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.0028390136104887117,
+        "muon_lr": 0.002738716751221775,
+        "weight_decay": 0.28272284931480285
+      }
+    },
+    {
+      "model": {
+        "d_block": 384,
+        "n_blocks": 3,
+        "dropout": 0.0,
+        "numerical_embeddings": {
+          "d_embedding": 8,
+          "init_scale": 0.023622788742468915
+        }
+      },
+      "optimizer": {
+        "adamw_lr": 0.00020906959718674516,
+        "muon_lr": 0.0457269529105184,
+        "weight_decay": 0.0022860536478100874
+      }
+    }
+  ],
+  "train_wall_seconds": 172.2301970338449,
+  "train_peak_allocated_bytes": 9398103040,
+  "epochs_completed": 5,
+  "epoch_eval_elapsed_seconds": [
+    35.83698685094714,
+    69.14949737396091,
+    102.31502222502604,
+    135.54063256597146,
+    168.81633270112798
+  ],
+  "test_metric": "rmse",
+  "test_score": 0.16081150208472295,
+  "inference_compile_seconds": 9.65643158275634,
+  "inference_seconds": {
+    "eager": [
+      0.025356288999319077,
+      0.025222493801265955,
+      0.02510388381779194,
+      0.02519296295940876,
+      0.02522566169500351,
+      0.0253723100759089,
+      0.02527388697490096,
+      0.025363242253661156,
+      0.025263650342822075,
+      0.025233752094209194,
+      0.025390975177288055,
+      0.025221726391464472,
+      0.02513781702145934,
+      0.025226067285984755,
+      0.02538238512352109,
+      0.025171025190502405,
+      0.025329490657895803,
+      0.025255149696022272,
+      0.02522737765684724,
+      0.02532473672181368,
+      0.025293711107224226,
+      0.02532942220568657,
+      0.025435768999159336,
+      0.025250527076423168,
+      0.025536189787089825,
+      0.025265772826969624,
+      0.025417810771614313,
+      0.02527668885886669,
+      0.02539787068963051,
+      0.02537932014092803,
+      0.025298455730080605,
+      0.02532122703269124,
+      0.02533128159120679,
+      0.025237233377993107,
+      0.025324891787022352,
+      0.025367738213390112,
+      0.025229914113879204,
+      0.02537422301247716,
+      0.025190024636685848,
+      0.02536899410188198,
+      0.02541167475283146,
+      0.02516862563788891,
+      0.02522938372567296,
+      0.025165059603750706,
+      0.025177207309752703,
+      0.02532258490100503,
+      0.02559076528996229,
+      0.025206820107996464,
+      0.025451325811445713,
+      0.025384746957570314
+    ],
+    "compiled": [
+      0.008328841999173164,
+      0.008209476713091135,
+      0.008068785071372986,
+      0.008018737193197012,
+      0.007997377775609493,
+      0.008048838935792446,
+      0.00813557393848896,
+      0.008012462873011827,
+      0.008020989131182432,
+      0.008065632078796625,
+      0.008045286871492863,
+      0.008015593979507685,
+      0.007947203703224659,
+      0.008114625234156847,
+      0.007925205864012241,
+      0.008058791980147362,
+      0.00813864590600133,
+      0.008007891941815615,
+      0.007960200775414705,
+      0.008088492788374424,
+      0.008070508949458599,
+      0.008088425267487764,
+      0.008166349958628416,
+      0.007997391745448112,
+      0.00812889775261283,
+      0.008028079755604267,
+      0.008083990309387445,
+      0.00822480209171772,
+      0.00818870309740305,
+      0.008130759000778198,
+      0.008299251087009907,
+      0.008137439843267202,
+      0.008199629373848438,
+      0.008088460192084312,
+      0.008036521263420582,
+      0.008012719918042421,
+      0.00802629441022873,
+      0.007920356001704931,
+      0.008037034887820482,
+      0.007983967196196318,
+      0.007940869778394699,
+      0.008092882111668587,
+      0.007905620150268078,
+      0.007997503038495779,
+      0.008015039842575788,
+      0.00797452824190259,
+      0.008018449880182743,
+      0.007962876930832863,
+      0.007887064013630152,
+      0.007888094987720251
+    ]
+  },
+  "selected_member_ids": [
+    6,
+    8,
+    0,
+    6,
+    7,
+    12,
+    7,
+    10
+  ],
+  "selected_member_steps": [
+    314,
+    471,
+    628,
+    628,
+    628,
+    628,
+    785,
+    785
+  ],
+  "provenance": {
+    "run_id": "20261110T124055Z-44a43ab1",
+    "host": "ysda_beleriand",
+    "gpu_index": "3",
+    "gpu_uuid": "GPU-972b1ac9-5c27-384f-8f3b-b917fd06deba",
+    "commit": "2fea5e21a098a88c8af68f7666adc0ecb34f48ad",
+    "branch": "dev/veleboks-tabred-baselines",
+    "torch": "2.14.0+cu126",
+    "cuda": "12.6",
+    "gpu": "NVIDIA RTX A4000",
+    "manifest_sha256": "cd60cf4967005de64553f45be185d7ef2d0d8b09fcc62ec501847e5434546bdd",
+    "source_sha256": {
+      "dev/veleboks/configs/maps-routing-a4000.json": "10a44930f227e15d9ba0dd2f9655731074535c56c90c4d4fe520688e53c0915d",
+      "dev/veleboks/run_tabred_baseline.py": "aa68c0a4306dfb5b520ab08b3d6cd8efdd108256b5689957d541ef56aaef20c1"
+    }
+  }
+}

@@ -8,7 +8,7 @@ import triton.language as tl
 from torch import Tensor
 from torch.autograd import Function
 
-from .utils import _locate_matrix
+from .utils import _locate_matrix, resolve_matmul_dtypes
 
 
 @triton.jit
@@ -33,6 +33,8 @@ def _packed_matmul(
     bias_ptr,
     HAS_BIAS: tl.constexpr,
     SEARCH_STEPS: tl.constexpr,
+    INPUT_PRECISION: tl.constexpr,
+    ACC_DTYPE: tl.constexpr,
 ):
     """Multiply packed matrices and optionally add column bias from bias_ptr.
 
@@ -63,7 +65,7 @@ def _packed_matmul(
         if reduction_sizes_ptr is None
         else tl.load(reduction_sizes_ptr + matrix)
     )
-    acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
+    acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=ACC_DTYPE)
     for k_block in tl.static_range(0, tl.cdiv(MAX_K, BLOCK_K)):
         k = k_block * BLOCK_K + tl.arange(0, BLOCK_K)
         if TRANSPOSE_LHS:
@@ -102,7 +104,7 @@ def _packed_matmul(
                 mask=(k[:, None] < k_size) & (columns[None, :] < n),
                 other=0.0,
             )
-        acc += tl.dot(lhs, rhs, input_precision='tf32')
+        acc += tl.dot(lhs, rhs, input_precision=INPUT_PRECISION)
     if HAS_BIAS:
         bias = tl.load(
             bias_ptr + matrix * padded_n + columns, mask=columns < n, other=0.0
@@ -120,7 +122,7 @@ def _packed_matmul(
 
 class _TritonLinearFunction(Function):
     @staticmethod
-    @torch.amp.custom_fwd(device_type='cuda', cast_inputs=torch.bfloat16)
+    @torch.amp.custom_fwd(device_type='cuda')
     def forward(
         ctx,
         x,
@@ -141,6 +143,7 @@ class _TritonLinearFunction(Function):
         ) = layout
         block_m, block_n, block_k, num_warps, num_stages = options
         max_out, max_in = weight.shape[-2:]
+        _, acc_dtype, input_precision = resolve_matmul_dtypes(x, weight)
         # The Triton kernel computes offsets for contiguous row-major buffers.
         x, weight, bias = x.contiguous(), weight.contiguous(), bias.contiguous()
         output = torch.zeros(
@@ -162,6 +165,8 @@ class _TritonLinearFunction(Function):
             BLOCK_N=block_n,
             BLOCK_K=block_k,
             SEARCH_STEPS=x.shape[0].bit_length(),
+            INPUT_PRECISION=input_precision,
+            ACC_DTYPE=acc_dtype,
             MAX_K=max_in,
             TRANSPOSE_LHS=False,
             TRANSPOSE_RHS=True,
@@ -185,6 +190,7 @@ class _TritonLinearFunction(Function):
         x, weight, bias, in_sizes, out_sizes, prefix_x, prefix_weight = (
             ctx.saved_tensors
         )
+        _, acc_dtype, input_precision = resolve_matmul_dtypes(grad_output, weight)
         grad_output = grad_output.contiguous()
         grad_x = torch.zeros_like(x)
         grad_weight = torch.zeros_like(weight)
@@ -204,6 +210,8 @@ class _TritonLinearFunction(Function):
             BLOCK_N=ctx.block_n,
             BLOCK_K=ctx.block_k,
             SEARCH_STEPS=x.shape[0].bit_length(),
+            INPUT_PRECISION=input_precision,
+            ACC_DTYPE=acc_dtype,
             MAX_K=ctx.max_out,
             TRANSPOSE_LHS=False,
             TRANSPOSE_RHS=False,
@@ -228,6 +236,8 @@ class _TritonLinearFunction(Function):
             BLOCK_N=ctx.block_n,
             BLOCK_K=ctx.block_k,
             SEARCH_STEPS=x.shape[0].bit_length(),
+            INPUT_PRECISION=input_precision,
+            ACC_DTYPE=acc_dtype,
             MAX_K=x.shape[1],
             TRANSPOSE_LHS=True,
             TRANSPOSE_RHS=False,
@@ -247,4 +257,11 @@ class _TritonLinearFunction(Function):
         return grad_x, grad_weight, grad_bias, None, None
 
 
-grouped_linear = _TritonLinearFunction.apply
+def grouped_linear(x, weight, bias, layout, options):
+    dtype, _, _ = resolve_matmul_dtypes(x, weight, autocast=True)
+    if bias.numel():
+        resolve_matmul_dtypes(x, bias, autocast=True)
+    # Cast outside the autograd Function so gradients return to the input dtypes.
+    return _TritonLinearFunction.apply(
+        x.to(dtype), weight.to(dtype), bias.to(dtype), layout, options
+    )

@@ -9,7 +9,7 @@ from torch import Tensor
 
 from tabpackage import nn
 
-from .utils import _locate_matrix
+from .utils import _locate_matrix, resolve_matmul_dtypes
 
 Options = tuple[int, int, int, int, int]
 
@@ -41,6 +41,8 @@ def _grouped_gemm(
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
     SEARCH_STEPS: tl.constexpr,
+    ACC_DTYPE: tl.constexpr,
+    INPUT_PRECISION: tl.constexpr,
 ):
     """Write one tile of D = ALPHA * (A @ B) + BETA * C per program.
 
@@ -58,7 +60,7 @@ def _grouped_gemm(
     column_tiles = tl.cdiv(n, BLOCK_N)
     r = (local // column_tiles) * BLOCK_M + tl.arange(0, BLOCK_M)
     c = (local % column_tiles) * BLOCK_N + tl.arange(0, BLOCK_N)
-    acc = tl.zeros((BLOCK_M, BLOCK_N), tl.float32)
+    acc = tl.zeros((BLOCK_M, BLOCK_N), ACC_DTYPE)
     for start in range(tl.cdiv(k, BLOCK_K)):
         q = start * BLOCK_K + tl.arange(0, BLOCK_K)
         a = tl.load(
@@ -71,14 +73,14 @@ def _grouped_gemm(
             (q[:, None] < k) & (c[None, :] < n),
             other=0,
         )
-        acc = tl.dot(a, b, acc)
+        acc = tl.dot(a, b, acc, input_precision=INPUT_PRECISION)
     if BETA != 0:
         add = tl.load(
             C + matrix * CM + r[:, None] * CR + c[None, :] * CC,
             (r[:, None] < m) & (c[None, :] < n),
             other=0,
         )
-        acc = ALPHA * acc + BETA * add.to(tl.float32)
+        acc = ALPHA * acc + BETA * add.to(ACC_DTYPE)
     else:
         acc = ALPHA * acc
     tl.store(
@@ -156,6 +158,9 @@ class NewtonSchulz:
         alpha: float = 1.0,
         beta: float = 0.0,
     ) -> None:
+        dtype, acc_dtype, input_precision = resolve_matmul_dtypes(lhs, rhs)
+        if output.dtype != dtype or (beta != 0 and addend.dtype != dtype):
+            raise TypeError('Newton-Schulz GEMM buffers must have matching dtypes')
         sizes, prefix, tiles = self.layouts[op]
         block_m, block_n, block_k, num_warps, num_stages = self.options
         _grouped_gemm[(tiles,)](
@@ -176,6 +181,8 @@ class NewtonSchulz:
             block_n,
             block_k,
             SEARCH_STEPS=lhs.shape[0].bit_length(),
+            ACC_DTYPE=acc_dtype,
+            INPUT_PRECISION=input_precision,
             num_warps=num_warps,
             num_stages=num_stages,
         )

@@ -103,22 +103,31 @@ class FixedSlotGemm:
 
 
 class RectangularFixedSlotPlan:
-    """Batch-major linear forward/backward; only tasks change with routing."""
+    """Batch-major linear plans with fixed parameters and optional active-only columns."""
 
-    def __init__(self, shapes, batch, active=None, *, device='cuda'):
+    def __init__(self, shapes, batch, active=None, *, device='cuda', active_only=False, tile=(64, 64, 32)):
         self.shapes = matrix_shapes(shapes)
         self.batch = int(batch)
         if self.batch < 1:
             raise ValueError('Expected a positive batch size')
         self.active = active_members(active, len(self.shapes))
-        self.inputs = sum(d for h, d in self.shapes)
-        self.outputs = sum(h for h, d in self.shapes)
+        self.active_only = bool(active_only)
+        layout = self.active if self.active_only else range(len(self.shapes))
+        offsets = {}
+        self.inputs = self.outputs = 0
+        for i in layout:
+            offsets[i] = self.inputs, self.outputs
+            h, d = self.shapes[i]
+            self.inputs += d
+            self.outputs += h
+        self.bias_size = sum(h for h, d in self.shapes)
         self.weight_size = sum(h * d for h, d in self.shapes)
         fw, dx, dw, bt = [], [], [], []
-        xo = yo = wo = 0
+        bo = wo = 0
         for i, (h, d) in enumerate(self.shapes):
+            xo, yo = offsets.get(i, (0, 0))
             fw.append(
-                (xo, wo, yo, batch, h, d, self.inputs, 1, 1, d, self.outputs, 0, yo)
+                (xo, wo, yo, batch, h, d, self.inputs, 1, 1, d, self.outputs, 0, bo)
             )
             dx.append(
                 (yo, wo, xo, batch, d, h, self.outputs, 1, d, 1, self.inputs, 0, 0)
@@ -128,12 +137,11 @@ class RectangularFixedSlotPlan:
             )
             if i in self.active:
                 bt.extend((i, n) for n in range((h + 31) // 32))
-            xo += d
-            yo += h
+            bo += h
             wo += h * d
-        self.forward = FixedSlotGemm(fw, self.active, device=device)
-        self.input_grad = FixedSlotGemm(dx, self.active, device=device)
-        self.weight_grad = FixedSlotGemm(dw, self.active, device=device)
+        self.forward = FixedSlotGemm(fw, self.active, device=device, tile=tile)
+        self.input_grad = FixedSlotGemm(dx, self.active, device=device, tile=tile)
+        self.weight_grad = FixedSlotGemm(dw, self.active, device=device, tile=tile)
         self.bias_tasks = torch.tensor(bt, dtype=torch.int32, device=device).reshape(
             -1, 2
         )
@@ -142,7 +150,7 @@ class RectangularFixedSlotPlan:
         if (
             x.shape != (self.batch, self.inputs)
             or weight.shape != (self.weight_size,)
-            or bias.shape != (self.outputs,)
+            or bias.shape != (self.bias_size,)
             or any(not t.is_contiguous() for t in (x, weight, bias))
             or bias.dtype != x.dtype
             or bias.device != x.device
@@ -156,7 +164,9 @@ class RectangularFixedSlotPlan:
 class _RectangularLinear(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, weight, bias, plan):
-        out = x.new_zeros(plan.batch, plan.outputs)
+        out = (x.new_empty if plan.active_only else x.new_zeros)(
+            plan.batch, plan.outputs
+        )
         plan.forward.run(x, weight, out, bias=bias)
         ctx.save_for_backward(x, weight)
         ctx.plan = plan
@@ -168,9 +178,12 @@ class _RectangularLinear(torch.autograd.Function):
         x, weight = ctx.saved_tensors
         plan = ctx.plan
         grad = grad.contiguous()
-        dx = torch.zeros_like(x) if ctx.needs_input_grad[0] else None
+        dx = (
+            (torch.empty_like if plan.active_only else torch.zeros_like)(x)
+            if ctx.needs_input_grad[0] else None
+        )
         dw = torch.zeros_like(weight) if ctx.needs_input_grad[1] else None
-        db = grad.new_zeros(plan.outputs) if ctx.needs_input_grad[2] else None
+        db = grad.new_zeros(plan.bias_size) if ctx.needs_input_grad[2] else None
         if dx is not None:
             plan.input_grad.run(grad, weight, dx)
         if dw is not None:
@@ -191,11 +204,12 @@ class _RectangularLinear(torch.autograd.Function):
 
 
 class CompactFixedSlotLinear(nn.Module):
-    """Rectangular linear pack with stable FP32/low-precision parameter slots."""
+    """Stable parameter slots; active_only compacts activations in routed order."""
 
-    def __init__(self, shapes, *, device='cuda', dtype=torch.float32):
+    def __init__(self, shapes, *, device='cuda', dtype=torch.float32, active_only=False):
         super().__init__()
         self.shapes = matrix_shapes(shapes)
+        self.active_only = bool(active_only)
         self.weight = nn.Parameter(
             torch.empty(sum(h * d for h, d in self.shapes), device=device, dtype=dtype)
         )
@@ -218,11 +232,12 @@ class CompactFixedSlotLinear(nn.Module):
             torch.bfloat16,
         ):
             raise ValueError('Expected FP16/BF16 activations on the parameter device')
-        key = (x.shape[0], ids)
+        key = (x.shape[0], ids, self.active_only)
         if key not in self._plans:
             with torch.inference_mode(False):
                 self._plans[key] = RectangularFixedSlotPlan(
-                    self.shapes, x.shape[0], ids, device=x.device
+                    self.shapes, x.shape[0], ids, device=x.device,
+                    active_only=self.active_only,
                 )
             if len(self._plans) > 32:
                 self._plans.popitem(last=False)
@@ -230,17 +245,20 @@ class CompactFixedSlotLinear(nn.Module):
         return self._plans[key](x, self.weight.to(x.dtype), self.bias.to(x.dtype))
 
 
-@triton.jit
+@triton.jit(
+    do_not_specialize=['WIDTH', 'BATCH', 'SM', 'SB', 'SF'],
+    do_not_specialize_on_alignment=['WIDTH', 'BATCH', 'SM', 'SB', 'SF'],
+)
 def _feature_columns(
     SRC,
     DST,
     MEMBERS,
     COLUMNS,
-    WIDTH: tl.constexpr,
-    BATCH: tl.constexpr,
-    SM: tl.constexpr,
-    SB: tl.constexpr,
-    SF: tl.constexpr,
+    WIDTH,
+    BATCH,
+    SM,
+    SB,
+    SF,
     SCATTER: tl.constexpr,
     BLOCK: tl.constexpr,
 ):
@@ -259,27 +277,29 @@ def _feature_columns(
 
 
 class FeatureColumnTransfer:
-    """Gather selected physical feature columns, retaining every candidate's slot.
+    """Gather feature columns into full-slot or active-only batch-major storage.
 
     Source is [local active member, batch, padded features]. Maps are explicit
     because flattened numerical embeddings contain per-feature padding gaps.
     """
 
-    def __init__(self, columns, active, *, device):
+    def __init__(self, columns, active, *, device, active_only=False):
         active = active_members(active, len(columns))
         if any(not c or min(c) < 0 or len(set(c)) != len(c) for c in columns):
             raise ValueError('Expected distinct nonnegative feature columns per member')
         local = {member: i for i, member in enumerate(active)}
         self.active = active
-        self.width = sum(map(len, columns))
+        self.active_only = bool(active_only)
+        layout = active if self.active_only else range(len(columns))
+        self.width = sum(len(columns[i]) for i in layout)
         self.max_column = max(max(columns[i]) for i in active) if active else -1
         self.members = torch.tensor(
-            [local.get(i, -1) for i, cols in enumerate(columns) for _ in cols],
+            [local.get(i, -1) for i in layout for _ in columns[i]],
             device=device,
             dtype=torch.int64,
         )
         self.columns = torch.tensor(
-            [j for cols in columns for j in cols], device=device, dtype=torch.int64
+            [j for i in layout for j in columns[i]], device=device, dtype=torch.int64
         )
 
     def pack(self, source, dtype):
@@ -300,17 +320,18 @@ class _GatherFeatureColumns(torch.autograd.Function):
         out = torch.empty(
             (source.shape[1], plan.width), device=source.device, dtype=dtype
         )
-        _feature_columns[(triton.cdiv(out.numel(), 1024),)](
-            source,
-            out,
-            plan.members,
-            plan.columns,
-            plan.width,
-            source.shape[1],
-            *source.stride(),
-            False,
-            1024,
-        )
+        if out.numel():
+            _feature_columns[(triton.cdiv(out.numel(), 1024),)](
+                source,
+                out,
+                plan.members,
+                plan.columns,
+                plan.width,
+                source.shape[1],
+                *source.stride(),
+                False,
+                1024,
+            )
         ctx.plan, ctx.shape, ctx.dtype = plan, source.shape, source.dtype
         return out
 
@@ -320,15 +341,16 @@ class _GatherFeatureColumns(torch.autograd.Function):
         plan = ctx.plan
         out = torch.zeros(ctx.shape, device=grad.device, dtype=ctx.dtype)
         grad = grad.contiguous()
-        _feature_columns[(triton.cdiv(grad.numel(), 1024),)](
-            grad,
-            out,
-            plan.members,
-            plan.columns,
-            plan.width,
-            out.shape[1],
-            *out.stride(),
-            True,
-            1024,
-        )
+        if grad.numel():
+            _feature_columns[(triton.cdiv(grad.numel(), 1024),)](
+                grad,
+                out,
+                plan.members,
+                plan.columns,
+                plan.width,
+                out.shape[1],
+                *out.stride(),
+                True,
+                1024,
+            )
         return out, None, None

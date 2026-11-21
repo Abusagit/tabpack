@@ -11,13 +11,17 @@ from torch.autograd.function import once_differentiable
 
 from tabpack_experimental.ragged import LinearPlan, Tile
 from tabpack_experimental.fixed_slot_matrix import CompactFixedSlotLinear
+from tabpack_experimental.grouped_mlp_block import GroupedMLPBlock
 
 # Triton annotations describe GPU compilation, not Python call signatures.
 triton: Any = _triton
 tl: Any = _tl
 
 
-@triton.jit
+@triton.jit(
+    do_not_specialize=['SIZE', 'COLS'],
+    do_not_specialize_on_alignment=['SIZE', 'COLS'],
+)
 def _pointwise(
     X,
     Z,
@@ -25,8 +29,8 @@ def _pointwise(
     ActiveColumns,
     KeepProbabilities,
     Seed,
-    SIZE: tl.constexpr,
-    COLS: tl.constexpr,
+    SIZE,
+    COLS,
     ALL_ACTIVE: tl.constexpr,
     DROPOUT: tl.constexpr,
     RANDOM: tl.constexpr,
@@ -769,112 +773,22 @@ def fixed_slot_fused_mm(
     tl.store(Y + offsets, values, valid)
 
 
-class _FixedSlotCompactLayer(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x, weight, bias, seed, block, plan):
-        dropout = block.training and block.has_dropout
-        if block.fused:
-            output = torch.empty_like(x)
-            if block.has_inactive:
-                block.pointwise(x, x, output, 'carry_grad')
-            fixed_slot_fused_mm[(len(plan.forward_tasks),)](
-                x, weight, bias, output, plan.descriptors, plan.forward_tasks,
-                block.keep_probabilities, seed, dropout, dropout and block.stochastic,
-                plan.stride, plan.batch, 32, 32, 32, num_warps=4)
-        else:
-            linear = plan(x, weight, bias)
-            output = torch.empty_like(x)
-            block.pointwise(x, linear, output, 'forward', seed, dropout)
-        ctx.save_for_backward(x, weight, output, seed)
-        ctx.block, ctx.plan, ctx.dropout = block, plan, dropout
-        return output
-
-    @staticmethod
-    @once_differentiable
-    def backward(ctx, grad_output):
-        x, weight, output, seed = ctx.saved_tensors
-        block, plan = ctx.block, ctx.plan
-        grad_output = grad_output.contiguous()
-        dz = torch.empty_like(grad_output)
-        block.pointwise(grad_output, output, dz, 'activation_grad', seed, ctx.dropout)
-        dx = torch.zeros_like(x) if ctx.needs_input_grad[0] else None
-        dw = torch.zeros_like(weight) if ctx.needs_input_grad[1] else None
-        db = torch.zeros(plan.stride, device=x.device, dtype=x.dtype) if ctx.needs_input_grad[2] else None
-        if dx is not None:
-            fixed_slot_dx[(len(plan.forward_tasks),)](
-                dz, weight, dx, plan.descriptors, plan.forward_tasks,
-                plan.stride, plan.batch, 32, 32, 32, num_warps=4)
-            if block.has_inactive:
-                block.pointwise(grad_output, output, dx, 'carry_grad')
-        if dw is not None:
-            fixed_slot_dw[(len(plan.weight_tasks),)](
-                dz, x, dw, plan.descriptors, plan.weight_tasks,
-                plan.stride, plan.batch, 32, 32, 32, num_warps=4)
-        if db is not None:
-            fixed_slot_db[(len(plan.bias_tasks),)](
-                dz, db, plan.descriptors, plan.bias_tasks,
-                plan.stride, plan.batch, 128, 32, num_warps=4)
-        return dx, dw, db, None, None, None
-
-
-class _FixedSlotCompactBlock(nn.Module):
-    pointwise = CompactBlock.pointwise
-
-    def __init__(self, widths, batch, dropout, *, device, dtype, fused):
-        super().__init__()
-        self.widths, self.batch = widths, batch
-        self.total_width = sum(widths)
-        self.fused = fused
-        self.has_dropout = any(p > 0 for p in dropout)
-        self.stochastic = any(0 < p < 1 for p in dropout)
-        self.weight = nn.Parameter(torch.empty(sum(w * w for w in widths), device=device, dtype=dtype))
-        self.bias = nn.Parameter(torch.zeros(self.total_width, device=device, dtype=dtype))
-        with torch.no_grad():
-            offset = 0
-            for width in widths:
-                self.weight[offset:offset + width * width].normal_(std=math.sqrt(2 / width))
-                offset += width * width
-        self.register_buffer('keep_probabilities', torch.tensor(
-            [1 - p for p, width in zip(dropout, widths) for _ in range(width)],
-            device=device, dtype=torch.float32), persistent=False)
-        self._plans = {}
-
-    def forward(self, x, selected, seed):
-        key = (selected, x.device)
-        if key not in self._plans:
-            plan = FixedSlotPlan(self.widths, self.batch, selected, device=x.device)
-            mask = torch.tensor([int(i in selected) for i, w in enumerate(self.widths)
-                                 for _ in range(w)], device=x.device, dtype=torch.uint8)
-            self._plans[key] = plan, mask
-        plan, mask = self._plans[key]
-        # A call-specific view keeps metadata stable if another active set is used before backward.
-        class CallBlock:
-            pointwise = CompactBlock.pointwise
-        block = CallBlock()
-        block.training, block.fused = self.training, self.fused
-        block.has_dropout, block.stochastic = self.has_dropout, self.stochastic
-        block.has_inactive = len(selected) != len(self.widths)
-        block.total_width, block.active_columns = self.total_width, mask
-        block.keep_probabilities = self.keep_probabilities
-        return _FixedSlotCompactLayer.apply(
-            x, self.weight.to(x.dtype), self.bias.to(x.dtype), seed, block, plan
-        )
-
-
 class CompactFixedSlotMLP(nn.Module):
     """CompactMLP-style hidden stack backed by stable fixed-slot linear kernels.
 
     Shapes and batch are fixed, while the optional active set can change between
     calls. Weights are compact by width but reserve a slot for every member at
     each depth. The fused path combines linear, bias, ReLU and dropout. Optional
-    input_widths adds an unfused rectangular input block; depths then count the
+    input_widths adds a rectangular grouped block; depths then count the
     square blocks after it, and may be zero.
     """
 
     def __init__(self, widths, batch, depths=3, *, device='cuda:0',
-                 dtype=torch.bfloat16, dropout=0.0, fused=False, input_widths=None):
+                 dtype=torch.bfloat16, dropout=0.0, fused=False, input_widths=None,
+                 active_only=False, tile=64, cache_size=32):
         super().__init__()
         self.widths, self.batch = tuple(map(int, widths)), int(batch)
+        self.active_only = bool(active_only)
         self.depths = ((depths,) * len(self.widths) if isinstance(depths, int)
                        else tuple(map(int, depths)))
         self.dropout = ((float(dropout),) * len(self.widths) if isinstance(dropout, (int, float))
@@ -891,43 +805,37 @@ class CompactFixedSlotMLP(nn.Module):
         if self.input_widths is not None and (len(self.input_widths) != len(self.widths)
                                               or min(self.input_widths) < 1):
             raise ValueError('Expected one positive input width per candidate')
-        self.input_layer = (None if self.input_widths is None else CompactFixedSlotLinear(
-            tuple(zip(self.widths, self.input_widths)), device=device, dtype=dtype))
-        self.register_buffer('input_keep', torch.tensor(
-            [1 - p for h, p in zip(self.widths, self.dropout) for _ in range(h)],
-            device=device, dtype=torch.float32) if self.input_layer is not None else None,
-            persistent=False)
-        self.blocks = nn.ModuleList(_FixedSlotCompactBlock(
-            self.widths, self.batch, self.dropout, device=device, dtype=dtype, fused=fused
+        options = dict(device=device, dtype=dtype, dropout=self.dropout,
+                       active_only=self.active_only, tile=tile, cache_size=cache_size)
+        self.input_layer = (None if self.input_widths is None else GroupedMLPBlock(
+            self.input_widths, self.widths, **options))
+        self.blocks = nn.ModuleList(GroupedMLPBlock(
+            self.widths, self.widths, fused=fused, **options
         ) for _ in range(max(self.depths)))
 
     def forward(self, x, active=None):
-        expected_width = sum(self.widths if self.input_widths is None else self.input_widths)
+        from tabpack_experimental.fixed_slot_matrix import active_members
+        active = active_members(active, len(self.widths))
+        inputs = self.widths if self.input_widths is None else self.input_widths
+        layout = active if self.active_only else range(len(self.widths))
+        expected_width = sum(inputs[i] for i in layout)
         parameter = self.input_layer.weight if self.input_layer is not None else self.blocks[0].weight
         if (tuple(x.shape) != (self.batch, expected_width) or not x.is_contiguous()
                 or x.device != parameter.device
                 or x.dtype not in (torch.float16, torch.bfloat16)):
-            raise ValueError('Expected contiguous FP16/BF16 input on the model device')
-        active = tuple(range(len(self.widths))) if active is None else tuple(map(int, active))
-        if len(set(active)) != len(active) or any(i < 0 or i >= len(self.widths) for i in active):
-            raise ValueError('Invalid active members')
-        if self.input_layer is not None:
-            x = torch.relu(self.input_layer(x, active))
-            if self.training and any(self.dropout[i] > 0 for i in active):
-                q = self.input_keep
-                scale = torch.where(q > 0, 1 / q.clamp_min(1e-30), 0)
-                mask = torch.rand(x.shape, device=x.device) < q
-                x = x * (mask * scale).to(x.dtype)
+            raise ValueError('Expected contiguous FP16/BF16 input matching the routed layout')
         selected = [tuple(i for i in active if self.depths[i] > layer)
                     for layer in range(len(self.blocks))]
-        count = sum(bool(ids) and block.training and block.stochastic
-                    for block, ids in zip(self.blocks, selected))
+        calls = ([] if self.input_layer is None else [(self.input_layer, active)])
+        calls += [(block, ids) for block, ids in zip(self.blocks, selected) if ids]
+        count = sum(self.training and any(0 < block.dropout[i] < 1 for i in ids)
+                    for block, ids in calls)
         seeds = iter(torch.randint(2**63 - 1, (count,), device=x.device, dtype=torch.int64).unbind()
                      if count else ())
-        for block, ids in zip(self.blocks, selected):
-            if ids:
-                seed = next(seeds) if block.training and block.stochastic else None
-                x = block(x, ids, seed)
+        for block, ids in calls:
+            stochastic = self.training and any(0 < block.dropout[i] < 1 for i in ids)
+            seed = next(seeds) if stochastic else None
+            x = block(x, active, seed, participating=ids)
         return x
 
     def pack(self, padded):

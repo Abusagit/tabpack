@@ -17,16 +17,19 @@ triton: Any = _triton
 tl: Any = _tl
 
 
-@triton.jit
+@triton.jit(
+    do_not_specialize=['S0', 'S1', 'S2', 'ROW_STRIDE'],
+    do_not_specialize_on_alignment=['S0', 'S1', 'S2', 'ROW_STRIDE'],
+)
 def _pack_matrix(
     S,
     D,
     Descriptors,
     Tasks,
-    S0: tl.constexpr,
-    S1: tl.constexpr,
-    S2: tl.constexpr,
-    ROW_STRIDE: tl.constexpr,
+    S0,
+    S1,
+    S2,
+    ROW_STRIDE,
     BLOCK: tl.constexpr,
 ):
     task = tl.program_id(0)
@@ -42,19 +45,22 @@ def _pack_matrix(
         index < rows * columns,
         0,
     )
-    stride = ROW_STRIDE if ROW_STRIDE else columns
+    stride = tl.where(ROW_STRIDE != 0, ROW_STRIDE, columns)
     destination = base + (index // columns) * stride + index % columns
     tl.store(D + destination, values, index < rows * columns)
 
 
-@triton.jit
+@triton.jit(
+    do_not_specialize=['ROWS', 'COLS', 'ROW_STRIDE'],
+    do_not_specialize_on_alignment=['ROWS', 'COLS', 'ROW_STRIDE'],
+)
 def _unpack_matrix(
     S,
     D,
     Descriptors,
-    ROWS: tl.constexpr,
-    COLS: tl.constexpr,
-    ROW_STRIDE: tl.constexpr,
+    ROWS,
+    COLS,
+    ROW_STRIDE,
     BLOCK: tl.constexpr,
 ):
     member = tl.program_id(1)
@@ -64,7 +70,7 @@ def _unpack_matrix(
     rows = tl.load(desc + 1)
     columns = tl.load(desc + 2)
     r, c = index // COLS, index % COLS
-    stride = ROW_STRIDE if ROW_STRIDE else columns
+    stride = tl.where(ROW_STRIDE != 0, ROW_STRIDE, columns)
     values = tl.load(
         S + base + r * stride + c,
         (index < ROWS * COLS) & (r < rows) & (c < columns),

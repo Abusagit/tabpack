@@ -1,14 +1,11 @@
 """Experimental active-only activations backed by stable fixed parameter slots."""
-import math
 from collections import OrderedDict
-from types import SimpleNamespace
 
 import torch
 import triton
 import triton.language as tl
-from torch.autograd.function import once_differentiable
 
-from tabpack_experimental.compact_mlp import CompactBlock, CompactFixedSlotMLP
+from tabpack_experimental.compact_mlp import CompactFixedSlotMLP
 
 @triton.jit
 def active_slot_mm(
@@ -181,10 +178,6 @@ def active_slot_db(
 
 
 
-class _CallBlock(SimpleNamespace):
-    pointwise = CompactBlock.pointwise
-
-
 class ActiveSlotPlan:
     """Metadata for an active-only layout and a layer's participating members."""
 
@@ -219,48 +212,6 @@ class ActiveSlotPlan:
         self.bias_tasks = torch.tensor(bias_tasks, device=device, dtype=torch.int32).reshape(-1, 3)
 
 
-class _ActiveLayer(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x, weight, bias, seed, block, plan):
-        z = torch.empty_like(x)
-        active_slot_mm[(len(plan.forward_tasks),)](
-            x, weight, bias, z, plan.descriptors, plan.forward_tasks,
-            plan.stride, plan.batch, plan.tile, plan.tile, 32, num_warps=4)
-        output = torch.empty_like(x)
-        dropout = block.training and block.has_dropout
-        block.pointwise(x, z, output, 'forward', seed, dropout)
-        ctx.save_for_backward(x, weight, output, seed)
-        ctx.block, ctx.plan, ctx.dropout = block, plan, dropout
-        return output
-
-    @staticmethod
-    @once_differentiable
-    def backward(ctx, grad_output):
-        x, weight, output, seed = ctx.saved_tensors
-        block, plan = ctx.block, ctx.plan
-        dy = grad_output.contiguous()
-        dz = torch.empty_like(dy)
-        block.pointwise(dy, output, dz, 'activation_grad', seed, ctx.dropout)
-        dx = torch.empty_like(x) if ctx.needs_input_grad[0] else None
-        dw = torch.zeros_like(weight) if ctx.needs_input_grad[1] else None
-        db = torch.zeros(plan.bias_size, device=x.device, dtype=x.dtype) if ctx.needs_input_grad[2] else None
-        if dx is not None:
-            active_slot_dx[(len(plan.forward_tasks),)](
-                dz, weight, dx, plan.descriptors, plan.forward_tasks,
-                plan.stride, plan.batch, plan.tile, plan.tile, 32, num_warps=4)
-            if block.has_inactive:
-                block.pointwise(dy, output, dx, 'carry_grad')
-        if dw is not None:
-            active_slot_dw[(len(plan.weight_tasks),)](
-                dz, x, dw, plan.descriptors, plan.weight_tasks,
-                plan.stride, plan.batch, plan.tile, plan.tile, 32, num_warps=4)
-        if db is not None:
-            active_slot_db[(len(plan.bias_tasks),)](
-                dz, db, plan.descriptors, plan.bias_tasks,
-                plan.stride, plan.batch, 128, 32, num_warps=4)
-        return dx, dw, db, None, None, None
-
-
 class ActiveFixedSlotMLP(CompactFixedSlotMLP):
     """Fixed parameter slots with active-only [batch, sum(active widths)] activations.
 
@@ -268,17 +219,23 @@ class ActiveFixedSlotMLP(CompactFixedSlotMLP):
     layout; existing activations can be subset/reordered using repack().
     Metadata is prepared once per layout and cached. Only unfused blocks are
     currently implemented. Full-shaped parameter gradients remain unchanged.
+    Optional input_widths adds an active-only rectangular input block; depths
+    then count the square blocks after that projection.
     """
 
     def __init__(self, widths, batch, depths=3, *, device='cuda:0',
-                 dtype=torch.bfloat16, dropout=0.0, tile=64, cache_size=32):
+                 dtype=torch.bfloat16, dropout=0.0, tile=64, cache_size=32,
+                 input_widths=None):
         widths = tuple(widths)
         requested_depths = ((depths,) * len(widths) if isinstance(depths, int)
                             else tuple(map(int, depths)))
         if len(requested_depths) != len(widths) or any(d < 0 for d in requested_depths):
             raise ValueError('Expected one nonnegative depth per model')
-        super().__init__(widths, batch, tuple(max(1, d) for d in requested_depths),
-                         device=device, dtype=dtype, dropout=dropout)
+        storage_depths = (tuple(max(1, d) for d in requested_depths)
+                          if input_widths is None else requested_depths)
+        super().__init__(widths, batch, storage_depths, device=device, dtype=dtype,
+                         dropout=dropout, input_widths=input_widths, active_only=True,
+                         tile=tile, cache_size=cache_size)
         self.depths = requested_depths
         if tile not in (32, 64):
             raise ValueError('Supported tile sizes are 32 and 64')
@@ -286,8 +243,10 @@ class ActiveFixedSlotMLP(CompactFixedSlotMLP):
             raise ValueError('cache_size must be positive')
         self.tile = tile
         self.cache_size = cache_size
-        self._active_layouts = OrderedDict()
         self._repack_indices = OrderedDict()
+
+    def _parameter(self):
+        return self.input_layer.weight if self.input_layer is not None else self.blocks[0].weight
 
     def _ids(self, active):
         ids = tuple(map(int, active))
@@ -304,31 +263,12 @@ class ActiveFixedSlotMLP(CompactFixedSlotMLP):
 
     def prepare(self, active, device=None):
         active = self._ids(active)
-        device = torch.device(device or self.blocks[0].weight.device)
-        key = (active, device)
-        if key in self._active_layouts:
-            self._active_layouts.move_to_end(key)
-            return self._active_layouts[key]
-        with torch.inference_mode(False):
-            keep = torch.tensor([1 - self.dropout[i] for i in active
-                                 for _ in range(self.widths[i])], dtype=torch.float32, device=device)
-            layers = []
-            for layer, module in enumerate(self.blocks):
-                selected = tuple(i for i in active if self.depths[i] > layer)
-                if not selected:
-                    layers.append(None)
-                    continue
-                plan = ActiveSlotPlan(self.widths, self.batch, active, selected, device, self.tile)
-                mask = torch.tensor([int(i in selected) for i in active
-                                     for _ in range(self.widths[i])], dtype=torch.uint8, device=device)
-                info = _CallBlock(
-                    total_width=plan.stride,
-                    active_columns=mask, keep_probabilities=keep,
-                    has_inactive=len(active) != len(selected),
-                    has_dropout=any(self.dropout[i] > 0 for i in selected),
-                    stochastic=any(0 < self.dropout[i] < 1 for i in selected))
-                layers.append((plan, info))
-        return self._put(self._active_layouts, key, layers)
+        if device is not None and torch.device(device) != self._parameter().device:
+            raise ValueError('Plans must use the parameter device')
+        return [module.prepare(self.batch, active,
+                    tuple(i for i in active if self.depths[i] > layer))
+                if any(self.depths[i] > layer for i in active) else None
+                for layer, module in enumerate(self.blocks)]
 
     def repack(self, x, source, target):
         """Subset/reorder an existing active layout in one gather operation."""
@@ -355,20 +295,4 @@ class ActiveFixedSlotMLP(CompactFixedSlotMLP):
 
     def forward(self, x, active=None):
         active = self._ids(range(len(self.widths)) if active is None else active)
-        if (x.shape != (self.batch, sum(self.widths[i] for i in active))
-                or not x.is_contiguous() or x.device != self.blocks[0].weight.device
-                or x.dtype not in (torch.float16, torch.bfloat16)):
-            raise ValueError('Expected contiguous active-only BF16/FP16 input on the model device')
-        layers = self.prepare(active, x.device)
-        count = sum(item is not None and self.training and item[1].stochastic for item in layers)
-        seeds = iter(torch.randint(2**63 - 1, (count,), device=x.device, dtype=torch.int64).unbind()
-                     if count else ())
-        for module, item in zip(self.blocks, layers):
-            if item is None:
-                continue
-            plan, template = item
-            block = _CallBlock(**vars(template))
-            block.training = self.training
-            seed = next(seeds) if self.training and block.stochastic else None
-            x = _ActiveLayer.apply(x, module.weight.to(x.dtype), module.bias.to(x.dtype), seed, block, plan)
-        return x
+        return super().forward(x, active)

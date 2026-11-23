@@ -3,6 +3,11 @@
 import pytest
 import torch
 
+from dev.nosorozhek.custom.kernels.gram_newton_schulz import GramNewtonSchulz
+from dev.nosorozhek.custom.torch_gram_muon import (
+    TorchGramMuonAdamWPack,
+    torch_gram_newton_schulz,
+)
 from dev.nosorozhek.custom.triton_linear_pack import TritonGroupedLinearPack
 from dev.nosorozhek.custom.triton_muon import TritonMuonAdamWPack
 from tabpackage import nn, optim
@@ -91,7 +96,10 @@ def test_linear_pack(
 
 @pytest.mark.parametrize('pack_size,max_in_features,max_out_features', PACK_SHAPES)
 @pytest.mark.parametrize('newton_schulz_steps', [1, 5])
-def test_muon_pack(pack_size, max_in_features, max_out_features, newton_schulz_steps):
+@pytest.mark.parametrize('algorithm', ['standard', 'gram'])
+def test_muon_pack(
+    pack_size, max_in_features, max_out_features, newton_schulz_steps, algorithm
+):
     torch.manual_seed(42)
     in_features = torch.randint(1, max_in_features + 1, (pack_size,)).tolist()
     out_features = torch.randint(1, max_out_features + 1, (pack_size,)).tolist()
@@ -119,9 +127,17 @@ def test_muon_pack(pack_size, max_in_features, max_out_features, newton_schulz_s
             muon_skip_zero_updates=False,
             allow_inplace_grad_mutation=False,
             pack_size=pack_size,
+            **(
+                {'newton_schulz_algorithm': algorithm}
+                if cls is TritonMuonAdamWPack
+                else {}
+            ),
         )
         for cls, layer in (
-            (optim.MuonAdamWPack, original),
+            (
+                TorchGramMuonAdamWPack if algorithm == 'gram' else optim.MuonAdamWPack,
+                original,
+            ),
             (TritonMuonAdamWPack, custom),
         )
     ]
@@ -154,3 +170,53 @@ def test_muon_pack(pack_size, max_in_features, max_out_features, newton_schulz_s
             atol=0,
         )
     assert custom in optimizers[1]._plans
+
+
+@pytest.mark.parametrize('shape', [(1, 17, 33), (4, 65, 17), (64, 32, 48), (4, 33, 33)])
+@pytest.mark.parametrize('dtype', [torch.float16, torch.bfloat16, torch.float32])
+@pytest.mark.parametrize('steps', [0, 1, 2, 3, 5])
+@pytest.mark.parametrize('layout', ['slice', 'transpose'])
+def test_gram_newton_schulz(shape, dtype, steps, layout):
+    torch.manual_seed(42)
+    count, rows, columns = shape
+    in_features = torch.randint(1, columns + 1, (count,)).tolist()
+    out_features = torch.randint(1, rows + 1, (count,)).tolist()
+    module = nn.LinearPack(
+        in_features=in_features,
+        out_features=out_features,
+        max_in_features=columns,
+        max_out_features=rows,
+        pack_size=count,
+        device='cuda',
+    )
+    if layout == 'slice':
+        update = torch.randn(count, rows, columns * 2, device='cuda', dtype=dtype)[
+            ..., ::2
+        ]
+    else:
+        update = torch.randn(count, columns, rows, device='cuda', dtype=dtype).mT
+    mask = (
+        torch.arange(rows, device='cuda')[None, :, None]
+        < torch.tensor(out_features, device='cuda')[:, None, None]
+    ) & (
+        torch.arange(columns, device='cuda')[None, None, :]
+        < torch.tensor(in_features, device='cuda')[:, None, None]
+    )
+    update.masked_fill_(~mask, 0)
+    if count > 1:
+        update[0].zero_()
+    before = update.clone()
+    plan = GramNewtonSchulz(module, module.weight.device, (32, 32, 32, 4, 2))
+    expected = torch_gram_newton_schulz(update, steps)
+    actual = plan(update, steps)
+    assert actual.dtype == expected.dtype == torch.float16
+    torch.testing.assert_close(
+        actual, expected, rtol=0.01, atol=0.02 if steps == 5 else 0.002
+    )
+    error = (actual.float() - expected.float()).flatten(1).norm(dim=1)
+    reference_norm = expected.float().flatten(1).norm(dim=1).clamp_min(1e-7)
+    assert (error / reference_norm).max() < 0.03
+    torch.testing.assert_close(update, before, rtol=0, atol=0)
+    assert not actual.masked_select(~mask).any()
+    if count > 1:
+        assert not actual[0].any()

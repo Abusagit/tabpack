@@ -6,7 +6,9 @@ from torch import Tensor
 
 from tabpackage import nn, optim
 
+from .kernels.gram_newton_schulz import GramNewtonSchulz
 from .kernels.newton_schulz import NewtonSchulz
+from .torch_gram_muon import torch_gram_newton_schulz, validate_gram_steps
 
 
 _logger = logging.getLogger(__name__)
@@ -26,10 +28,26 @@ class TritonMuonAdamWPack(optim.MuonAdamWPack):
         group['_triton_module'] = module
         return group
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+        self, *args, newton_schulz_algorithm: str = 'standard', **kwargs
+    ) -> None:
+        if newton_schulz_algorithm not in ('standard', 'gram'):
+            raise ValueError('Newton-Schulz algorithm must be standard or gram')
+        self._plan_type = (
+            GramNewtonSchulz if newton_schulz_algorithm == 'gram' else NewtonSchulz
+        )
         self._muon_modules: list[nn.LinearPack] = []
         self._plans = {}
         super().__init__(*args, **kwargs)
+        if self._plan_type is GramNewtonSchulz:
+            self._zeropower_via_newtonschulz5 = torch_gram_newton_schulz
+
+    def step(self, closure=None):
+        if self._plan_type is GramNewtonSchulz:
+            for group in self.param_groups:
+                if group['muon']:
+                    validate_gram_steps(group['muon_newton_schulz_steps'])
+        return super().step(closure)
 
     def add_param_group(self, param_group: dict) -> None:
         module = param_group.pop('_triton_module', None)
@@ -74,7 +92,7 @@ class TritonMuonAdamWPack(optim.MuonAdamWPack):
         key = (weight.device, weight.shape, features, options)
         cached = self._plans.get(module)
         if cached is None or cached[0] != key:
-            cached = key, NewtonSchulz(module, weight.device, options)
+            cached = key, self._plan_type(module, weight.device, options)
             self._plans[module] = cached
         _, plan = cached
         stock = self._zeropower_via_newtonschulz5

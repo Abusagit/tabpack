@@ -1,0 +1,378 @@
+{
+  "date": "2026-11-19",
+  "remeasure_run_id": "20261119T114508Z-86edb281",
+  "cpp_sha256": "190fa4dc26f414fd04432a2045d7c1969f4b7e4fea48a72c579752e3c77357c7",
+  "protocol": "Real early-first-epoch training, CUDA events, native/grouped/grouped/native; each process20 warmup+3profiler warmup+20measured steps. Same seed0/BF16/batch256/diverse widths/numerical embeddings/skip-zero=false. Extension build/loading excluded. No validation/ensemble/convergence measured.",
+  "scope": "Full step is gather+forward+loss+backward+optimizer+zero_grad. Nested Muon/AdamW are not added again.",
+  "cases": [
+    {
+      "dataset": "california",
+      "run_id": "20261119T114508Z-86edb281",
+      "freshly_remeasured": false,
+      "n_models": 64,
+      "environment": {
+        "python": "3.11.17",
+        "torch": "2.12.1+cu126",
+        "cuda_runtime": "12.6",
+        "triton": "3.7.1",
+        "gpu": "NVIDIA RTX A4000",
+        "compute_capability": "8.6",
+        "gpu_uuid": "fe2d8dfd-06f2-a5c4-a7fd-4a5f23947005",
+        "host": "imladris"
+      },
+      "config": {
+        "name": "california-diverse-embeddings",
+        "seed": 0,
+        "n_models": 64,
+        "max_ensemble_size": 64,
+        "widths": [
+          32,
+          64,
+          128,
+          256,
+          384,
+          512
+        ],
+        "depth_min": 1,
+        "depth_max": 4,
+        "embedding_dims": [
+          4,
+          8,
+          16,
+          32,
+          48,
+          64
+        ],
+        "init_scale": [
+          0.001,
+          20.0
+        ],
+        "dropout_max": 0.7,
+        "adamw_lr": [
+          3e-05,
+          0.01
+        ],
+        "muon_lr": [
+          0.0003,
+          0.15
+        ],
+        "weight_decay": [
+          0.0001,
+          2.0
+        ],
+        "batch_size": 256,
+        "max_epochs": 60,
+        "inference_batch_size": 256,
+        "model_patience": 16,
+        "ensemble_patience": 32,
+        "profile_epoch": 3,
+        "dataset": "california-sklearn",
+        "autocast": "bfloat16",
+        "use_paper_cache": false,
+        "muon_skip_zero_updates": false,
+        "data_root": "/home/skobeleviv/tabpack-data/tabred-v0.1.2"
+      },
+      "windows": {
+        "native": [
+          {
+            "report": "dev/veleboks/artifacts/runs/20261119T114508Z-86edb281/output/california-0-native-timing/report.json",
+            "timing": {
+              "first_muon_ms": 9.290547227859497,
+              "hidden_muon_ms": 27.727103996276853,
+              "adamw_ms": 0.2499072015285492,
+              "forward_ms": 4.867225575447082,
+              "backward_ms": 7.856486392021179,
+              "step_ms": 50.03361282019178
+            }
+          },
+          {
+            "report": "dev/veleboks/artifacts/runs/20261119T114508Z-86edb281/output/california-3-native-timing/report.json",
+            "timing": {
+              "first_muon_ms": 9.321420812606812,
+              "hidden_muon_ms": 27.856076812744142,
+              "adamw_ms": 0.25324320178478954,
+              "forward_ms": 4.884121608734131,
+              "backward_ms": 7.8707200050354,
+              "step_ms": 50.23032778831548
+            }
+          }
+        ],
+        "grouped": [
+          {
+            "report": "dev/veleboks/artifacts/runs/20261119T114508Z-86edb281/output/california-1-grouped-timing/report.json",
+            "timing": {
+              "first_muon_ms": 7.3480239629745485,
+              "hidden_muon_ms": 21.389055967330933,
+              "adamw_ms": 0.23347680009901522,
+              "forward_ms": 4.784281635284424,
+              "backward_ms": 7.754195213317871,
+              "step_ms": 41.551115255162586
+            }
+          },
+          {
+            "report": "dev/veleboks/artifacts/runs/20261119T114508Z-86edb281/output/california-2-grouped-timing/report.json",
+            "timing": {
+              "first_muon_ms": 7.359593629837036,
+              "hidden_muon_ms": 21.445076727867125,
+              "adamw_ms": 0.23568159751594067,
+              "forward_ms": 4.792985558509827,
+              "backward_ms": 7.765049624443054,
+              "step_ms": 41.64087654162431
+            }
+          }
+        ]
+      },
+      "means_ms": {
+        "native": {
+          "first_muon_ms": 9.305984020233154,
+          "hidden_muon_ms": 27.791590404510497,
+          "adamw_ms": 0.25157520165666936,
+          "forward_ms": 4.875673592090607,
+          "backward_ms": 7.86360319852829,
+          "step_ms": 50.13197030425363
+        },
+        "grouped": {
+          "first_muon_ms": 7.353808796405792,
+          "hidden_muon_ms": 21.41706634759903,
+          "adamw_ms": 0.23457919880747796,
+          "forward_ms": 4.788633596897125,
+          "backward_ms": 7.759622418880463,
+          "step_ms": 41.59599589839345
+        }
+      },
+      "speedup": 1.205211444551322,
+      "time_reduction_percent": 17.027007624186506
+    },
+    {
+      "dataset": "maps-routing",
+      "run_id": "20261119T123325Z-3d5f28b3",
+      "freshly_remeasured": true,
+      "n_models": 16,
+      "environment": {
+        "python": "3.11.17",
+        "torch": "2.12.1+cu126",
+        "cuda_runtime": "12.6",
+        "triton": "3.7.1",
+        "gpu": "NVIDIA RTX A4000",
+        "compute_capability": "8.6",
+        "gpu_uuid": "5a9b7750-9f85-49a5-3aae-fe07b1b7661d",
+        "host": "imladris"
+      },
+      "config": {
+        "name": "maps-routing-diverse-embeddings",
+        "seed": 0,
+        "n_models": 16,
+        "max_ensemble_size": 32,
+        "widths": [
+          64,
+          128,
+          256,
+          384,
+          512
+        ],
+        "depth_min": 1,
+        "depth_max": 4,
+        "dropout_max": 0.5,
+        "adamw_lr": [
+          0.0001,
+          0.005
+        ],
+        "muon_lr": [
+          0.001,
+          0.1
+        ],
+        "weight_decay": [
+          0.001,
+          1.0
+        ],
+        "batch_size": 256,
+        "max_epochs": null,
+        "inference_batch_size": 256,
+        "model_patience": 16,
+        "ensemble_patience": 32,
+        "profile_epoch": 3,
+        "dataset": "maps-routing",
+        "embedding_dims": [
+          4,
+          8,
+          16,
+          32
+        ],
+        "init_scale": [
+          0.001,
+          20.0
+        ],
+        "autocast": "bfloat16",
+        "use_paper_cache": false,
+        "muon_skip_zero_updates": false,
+        "data_root": "/home/skobeleviv/tabpack-data/tabred-v0.1.2"
+      },
+      "windows": {
+        "native": [
+          {
+            "first_muon_ms": 118.73981437683105,
+            "hidden_muon_ms": 7.70165764093399,
+            "step_ms": 204.04137093206518,
+            "report": "dev/veleboks/artifacts/runs/20261119T123325Z-3d5f28b3/output/maps-routing-0-native-timing/report.json"
+          },
+          {
+            "first_muon_ms": 121.41649932861328,
+            "hidden_muon_ms": 7.85162239074707,
+            "step_ms": 207.29840779676454,
+            "report": "dev/veleboks/artifacts/runs/20261119T123325Z-3d5f28b3/output/maps-routing-3-native-timing/report.json"
+          }
+        ],
+        "grouped": [
+          {
+            "first_muon_ms": 78.65630760192872,
+            "hidden_muon_ms": 7.13712637424469,
+            "step_ms": 164.58695804337037,
+            "report": "dev/veleboks/artifacts/runs/20261119T123325Z-3d5f28b3/output/maps-routing-1-grouped-timing/report.json"
+          },
+          {
+            "first_muon_ms": 78.78036499023438,
+            "hidden_muon_ms": 7.147574365139008,
+            "step_ms": 164.8765024051245,
+            "report": "dev/veleboks/artifacts/runs/20261119T123325Z-3d5f28b3/output/maps-routing-2-grouped-timing/report.json"
+          }
+        ]
+      },
+      "means_ms": {
+        "native": {
+          "first_muon_ms": 120.07815685272217,
+          "hidden_muon_ms": 7.77664001584053,
+          "step_ms": 205.66988936441487
+        },
+        "grouped": {
+          "first_muon_ms": 78.71833629608155,
+          "hidden_muon_ms": 7.142350369691849,
+          "step_ms": 164.73173022424743
+        }
+      },
+      "speedup": 1.2485141088753138,
+      "time_reduction_percent": 19.904789790415766,
+      "hybrid_lt": true
+    },
+    {
+      "dataset": "homecredit-default",
+      "run_id": "20261119T122635Z-469c900b",
+      "freshly_remeasured": true,
+      "n_models": 16,
+      "environment": {
+        "python": "3.11.17",
+        "torch": "2.12.1+cu126",
+        "cuda_runtime": "12.6",
+        "triton": "3.7.1",
+        "gpu": "NVIDIA RTX A4000",
+        "compute_capability": "8.6",
+        "gpu_uuid": "5a9b7750-9f85-49a5-3aae-fe07b1b7661d",
+        "host": "imladris"
+      },
+      "config": {
+        "name": "homecredit-default-diverse-embeddings",
+        "seed": 0,
+        "n_models": 16,
+        "max_ensemble_size": 32,
+        "widths": [
+          64,
+          128,
+          256,
+          384,
+          512
+        ],
+        "depth_min": 1,
+        "depth_max": 4,
+        "dropout_max": 0.5,
+        "adamw_lr": [
+          0.0001,
+          0.005
+        ],
+        "muon_lr": [
+          0.001,
+          0.1
+        ],
+        "weight_decay": [
+          0.001,
+          1.0
+        ],
+        "batch_size": 256,
+        "max_epochs": null,
+        "inference_batch_size": 256,
+        "model_patience": 16,
+        "ensemble_patience": 32,
+        "profile_epoch": 3,
+        "dataset": "homecredit-default",
+        "embedding_dims": [
+          4,
+          8,
+          16,
+          32
+        ],
+        "init_scale": [
+          0.001,
+          20.0
+        ],
+        "autocast": "bfloat16",
+        "use_paper_cache": false,
+        "muon_skip_zero_updates": false,
+        "data_root": "/home/skobeleviv/tabpack-data/tabred-v0.1.2"
+      },
+      "windows": {
+        "native": [
+          {
+            "first_muon_ms": 96.28400764465331,
+            "hidden_muon_ms": 7.643350422382355,
+            "step_ms": 156.2467853656097,
+            "report": "dev/veleboks/artifacts/runs/20261119T122635Z-469c900b/output/homecredit-default-0-native-timing/report.json"
+          },
+          {
+            "first_muon_ms": 99.21725387573242,
+            "hidden_muon_ms": 7.779020738601684,
+            "step_ms": 159.82730485727663,
+            "report": "dev/veleboks/artifacts/runs/20261119T122635Z-469c900b/output/homecredit-default-3-native-timing/report.json"
+          }
+        ],
+        "grouped": [
+          {
+            "first_muon_ms": 45.65719718933106,
+            "hidden_muon_ms": 6.728921604156494,
+            "step_ms": 106.16874573156238,
+            "report": "dev/veleboks/artifacts/runs/20261119T122635Z-469c900b/output/homecredit-default-1-grouped-timing/report.json"
+          },
+          {
+            "first_muon_ms": 45.77382869720459,
+            "hidden_muon_ms": 6.862028801441192,
+            "step_ms": 107.71829147208483,
+            "report": "dev/veleboks/artifacts/runs/20261119T122635Z-469c900b/output/homecredit-default-2-grouped-timing/report.json"
+          }
+        ]
+      },
+      "means_ms": {
+        "native": {
+          "first_muon_ms": 97.75063076019288,
+          "hidden_muon_ms": 7.711185580492019,
+          "step_ms": 158.03704511144315
+        },
+        "grouped": {
+          "first_muon_ms": 45.715512943267825,
+          "hidden_muon_ms": 6.795475202798843,
+          "step_ms": 106.9435186018236
+        }
+      },
+      "speedup": 1.4777617865730883,
+      "time_reduction_percent": 32.330094803778366,
+      "hybrid_lt": true
+    }
+  ],
+  "limitations": [
+    "One seed and two CUDA-event windows per backend on shared A4000; clocks not fixed.",
+    "California uses prior GPU2 run114508 on unchanged square/grouped path. Latest Maps and Homecredit are new GPU1 native/hybrid pairs; see per-case run IDs.",
+    "Current backend combines grouped Gram/polynomial with Lt out-of-place wide BX.",
+    "No new multi-epoch or convergence quality measurements."
+  ],
+  "publication": "No code changes, commits, push or PR for this remeasurement.",
+  "backend_description": "Hybrid: cuBLAS grouped Gram/polynomial, cuBLASLt separate-C/D wide BX.",
+  "bx_optimization_report": "dev/veleboks/results/muon-first-linear/bx-optimization.json",
+  "pre_bx_cpp_sha256": "4913e3cd620f7f19728f0eb10e2d91718d78b317f94072ed3f26381d4c595b77",
+  "source_note": "Header hash is current implementation. Each case run_id identifies its immutable snapshot. California is the previous unchanged square path; Home snapshot differs only in later Maps even-width alignment policy, not its executed odd-width Lt path."
+}

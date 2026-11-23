@@ -1,0 +1,163 @@
+{
+  "date": "2026-11-23",
+  "parent_commit": "66f3d6f",
+  "upstream_common_commit": "dfe0b0852f8ce9a65782267ae13653262c8f2430",
+  "protocol": "common.run; ABBA; 20 wait + 3 warmup + 20 active steps; sum of six nonoverlapping CUDA-event phase means",
+  "batch_size": 256,
+  "seed": 0,
+  "precision": "BF16 autocast; BF16 NS matrices / FP32 GEMM accumulation",
+  "cases": [
+    {
+      "dataset": "california",
+      "native_ms": 49.65079200493929,
+      "cublas_ms": 41.54584542465163,
+      "speedup": 1.195084406092709,
+      "time_reduction_percent": 16.323901901668304,
+      "optimizer_ms": [
+        36.886860847473145,
+        28.83013105392456
+      ],
+      "run_id": "20261123T133751Z-beb24082",
+      "environment": {
+        "python": "3.12.9",
+        "torch": "2.14.0+cu126",
+        "cuda_runtime": "12.6",
+        "triton": "3.8.0",
+        "gpu": "NVIDIA RTX A4000",
+        "compute_capability": "8.6",
+        "gpu_uuid": "aa969728-9b37-ac58-7855-3f03494fb9e8",
+        "host": "beleriand"
+      },
+      "n_models": 64,
+      "windows_ms": [
+        49.59605735595105,
+        41.38479495505453,
+        41.70689589424874,
+        49.70552665392752
+      ],
+      "peak_allocated_mib": 1516.3701171875,
+      "active_process_samples": 18,
+      "foreign_active_samples": 0,
+      "processed_data_matches_previous": true,
+      "sampled_hyperparameters_match_previous": true,
+      "reports": [
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/california-0-0/report.json",
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/california-1-1/report.json",
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/california-2-1/report.json",
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/california-3-0/report.json"
+      ]
+    },
+    {
+      "dataset": "maps-routing",
+      "native_ms": 202.62672698448296,
+      "cublas_ms": 163.24414237365124,
+      "speedup": 1.2412496034356229,
+      "time_reduction_percent": 19.43602662734991,
+      "optimizer_ms": [
+        125.7578239440918,
+        85.33349018096924
+      ],
+      "run_id": "20261123T135839Z-1c3118ca",
+      "environment": {
+        "python": "3.12.9",
+        "torch": "2.14.0+cu126",
+        "cuda_runtime": "12.6",
+        "triton": "3.8.0",
+        "gpu": "NVIDIA RTX A4000",
+        "compute_capability": "8.6",
+        "gpu_uuid": "a8fab7e3-7598-a8c6-a311-4c3fdbd02042",
+        "host": "beleriand"
+      },
+      "n_models": 16,
+      "windows_ms": [
+        202.25566700819763,
+        163.25043503195047,
+        163.23784971535204,
+        202.99778696076828
+      ],
+      "peak_allocated_mib": 7626.97119140625,
+      "active_process_samples": 47,
+      "foreign_active_samples": 0,
+      "processed_data_matches_previous": false,
+      "sampled_hyperparameters_match_previous": true,
+      "reports": [
+        "dev/veleboks/artifacts/runs/20261123T135839Z-1c3118ca/output/maps-routing-0-0/report.json",
+        "dev/veleboks/artifacts/runs/20261123T135839Z-1c3118ca/output/maps-routing-1-1/report.json",
+        "dev/veleboks/artifacts/runs/20261123T135839Z-1c3118ca/output/maps-routing-2-1/report.json",
+        "dev/veleboks/artifacts/runs/20261123T135839Z-1c3118ca/output/maps-routing-3-0/report.json"
+      ]
+    },
+    {
+      "dataset": "homecredit-default",
+      "native_ms": 156.66683125183624,
+      "cublas_ms": 105.39902231431043,
+      "speedup": 1.486416361478573,
+      "time_reduction_percent": 32.724098986284254,
+      "optimizer_ms": [
+        104.7171859741211,
+        52.88631172180176
+      ],
+      "run_id": "20261123T133751Z-beb24082",
+      "environment": {
+        "python": "3.12.9",
+        "torch": "2.14.0+cu126",
+        "cuda_runtime": "12.6",
+        "triton": "3.8.0",
+        "gpu": "NVIDIA RTX A4000",
+        "compute_capability": "8.6",
+        "gpu_uuid": "aa969728-9b37-ac58-7855-3f03494fb9e8",
+        "host": "beleriand"
+      },
+      "n_models": 16,
+      "windows_ms": [
+        156.40358024654563,
+        105.38934506765798,
+        105.40869956096286,
+        156.9300822571269
+      ],
+      "peak_allocated_mib": 5435.572265625,
+      "active_process_samples": 45,
+      "foreign_active_samples": 0,
+      "processed_data_matches_previous": true,
+      "sampled_hyperparameters_match_previous": true,
+      "reports": [
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/homecredit-default-0-0/report.json",
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/homecredit-default-1-1/report.json",
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/homecredit-default-2-1/report.json",
+        "dev/veleboks/artifacts/runs/20261123T133751Z-beb24082/output/homecredit-default-3-0/report.json"
+      ]
+    }
+  ],
+  "validation": {
+    "shared_test_run": "20261123T133357Z-40476354",
+    "shared_tests_passed": 18,
+    "numerical_run": "20261123T133525Z-eafac058",
+    "ns_comparisons": 42,
+    "max_relative_l2": 0.0022321383003145456,
+    "optimizer_lifecycle_cases": 2,
+    "final_library_sources_match_run_manifests": true,
+    "final_config_payloads_match_all_12_runs": true,
+    "wheel_includes_cpp_source": true
+  },
+  "source_sha256": {
+    "common/run.py": "96c09d718e239a3750dff6d793f9c056d772cf41df6608453f6524bad67388b6",
+    "common/data.py": "845f681dcfc804406dec38cd62d8fa64dbbaa8b9652cbb69f65ea06fcd4cde28",
+    "common/profiling.py": "a98a77bcc339631542a20cf8e9bcfb9a15bbde14de7eaa10a541704d8b7a46ae",
+    "src/tabpackage/_muon_grouped.py": "06ed16e431dac41ca7a1627eccbed97f495f7c14c0a59a62597d40871e5769c6",
+    "src/tabpackage/optim.py": "9e4c7dd1d893a2d10810205650ef82f4fb539c4473a54e179cd1cb9b89f2fd8c",
+    "src/tabpackage/_training.py": "b4c84008ac69dc2331c15483d793dbcad094417fb6fa472465e3656255a8f975",
+    "src/tabpackage/_instrument.py": "bff738d3c783fc36252feb171bb4e3fec524e3446666f4ceba4229e835030b15",
+    "src/tabpackage/csrc/muon_grouped.cpp": "190fa4dc26f414fd04432a2045d7c1969f4b7e4fea48a72c579752e3c77357c7"
+  },
+  "excluded_maps_runs": {
+    "20261123T133751Z-beb24082": "recovered allocator OOM warnings",
+    "20261123T135547Z-f306148e": "foreign GPU activity detected by pmon"
+  },
+  "limitations": [
+    "Shared GPUs: idle contexts occupied6588MiB on GPU0 and5664MiB on GPU4. No foreign SM/memory activity or allocator OOM warnings in accepted cases. Clocks not fixed.",
+    "One seed, two windows per backend. No validation/ensembling or convergence measurement. Build and preprocessing excluded from phase times.",
+    "Metric sums six phase means rather than the older outer-step CUDA-event latency. Do not splice into that table without this scope note.",
+    "Maps X hashes and sampled architectures match previous runs. Processed y hashes differ: target_std is0.37708914279937744 vs0.37708917260169983 (one FP32 ULP). Raw y and default train split SHA256 match across hosts; targets match exactly inside every new native/cublas pair.",
+    "Final wrapper reads model count/seed/skip-zero from configs rather than assigning the same values. All12 emitted run configs match final config payloads; final wrapper is exercised by the accepted Maps run."
+  ]
+}

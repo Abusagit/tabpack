@@ -492,6 +492,27 @@ def _zeropower_via_newtonschulz5(G, steps: int):
 # fmt: on
 
 
+def _muon_grouped_widths(module, *, rectangular=False):
+    shape = module.weight.shape
+    widths = []
+    for features, maximum in (
+        (module.in_features, module.max_in_features),
+        (module.out_features, module.max_out_features),
+    ):
+        widths.append(
+            torch.full(
+                (shape[0],), maximum, device=module.weight.device, dtype=torch.long
+            )
+            if features is None
+            else features.clone()
+        )
+    if rectangular:
+        return widths[1] if shape[1] <= shape[2] else None
+    if shape[1] != shape[2] or not torch.equal(*widths):
+        return None
+    return widths[0]
+
+
 class MuonAdamWPack(OptimizerPack):
     """A pack of optimizers combining Muon and AdamW.
 
@@ -511,8 +532,19 @@ class MuonAdamWPack(OptimizerPack):
     """
 
     @staticmethod
-    def make_muon_parameter_group(module: tabpackage.nn.LinearPack) -> dict[str, Any]:
-        """Create a single-parameter group to be optimized with Muon."""
+    def make_muon_parameter_group(
+        module: tabpackage.nn.LinearPack,
+        *,
+        grouped_square: bool = False,
+        grouped_rectangular: bool = False,
+    ) -> dict[str, Any]:
+        """Create a single-parameter group to be optimized with Muon.
+
+        Use ``grouped_square`` for square hidden layers, or
+        ``grouped_rectangular`` for the first block. The latter trims only output
+        rows and retains every input column, including interleaved embedding masks.
+        Tall padded matrices retain the native transpose-based implementation.
+        """
         if (
             module.max_in_features > module.max_out_features
             and module.max_out_features < 16
@@ -529,6 +561,12 @@ class MuonAdamWPack(OptimizerPack):
             'params': [module.weight],
             'muon': True,
             'muon_update_scale': compute_muon_update_scale_pack(module),
+            'muon_grouped_rectangular': grouped_rectangular,
+            'muon_grouped_widths': _muon_grouped_widths(
+                module, rectangular=grouped_rectangular
+            )
+            if grouped_square or grouped_rectangular
+            else None,
         }
 
     def __init__(
@@ -551,9 +589,23 @@ class MuonAdamWPack(OptimizerPack):
         # efficiency unless the original parameter gradients must be preserved.
         allow_inplace_grad_mutation: bool,
         compile_muon_newton_schulz: bool = False,
+        muon_backend: str = 'padded',
     ):
         """
         Args:
+            muon_backend: ``'padded'`` (default) or experimental ``'grouped'``.
+                Grouped GEMM keeps BF16 Newton-Schulz precision and requires CUDA,
+                CUDA >=12.5, build tools and the bundled extension source in
+                ``tabpackage/csrc``. It applies only to groups
+                marked ``grouped_square`` or ``grouped_rectangular``. Rectangular
+                groups retain all input columns and use actual output widths;
+                wide rectangular groups can use cuBLASLt for the final NS product
+                with separate input/output buffers, avoiding a padded copy.
+                Tall groups fall back to native. Excluded update regions must be
+                zero; a synchronizing check enforces this every call. Parameter
+                padding may remain nonzero. Other groups use the
+                original implementation. Compilation of Muon is incompatible
+                with the experimental backend.
             muon_skip_zero_updates: if `True`, the members with all-zero updates are
                 excluded from the Newton-Schulz iterations. On accelerators, this costs
                 a device-to-host synchronization per step for each Muon parameter group
@@ -563,6 +615,12 @@ class MuonAdamWPack(OptimizerPack):
         """
         if pack_size <= 0:
             raise ValueError('The pack size must be positive')
+        if muon_backend not in ('padded', 'grouped'):
+            raise ValueError('muon_backend must be padded or grouped')
+        if muon_backend == 'grouped' and compile_muon_newton_schulz:
+            raise ValueError('grouped backend cannot be combined with compiled Muon')
+        self._muon_backend = muon_backend
+        self._grouped_runtimes = {}
 
         if (
             compile_muon_newton_schulz
@@ -678,6 +736,12 @@ class MuonAdamWPack(OptimizerPack):
                 group['muon_update_scale'] = compute_muon_update_scale_pack(
                     muon_parameter_to_module[group['params'][0]]
                 )
+                if group.get('muon_grouped_widths') is not None:
+                    group['muon_grouped_widths'] = _muon_grouped_widths(
+                        muon_parameter_to_module[group['params'][0]],
+                        rectangular=group.get('muon_grouped_rectangular', False),
+                    )
+        self._grouped_runtimes.clear()
 
     def _step_muon(self, group: dict[str, Any]) -> None:
         lr = group['muon_lr']
@@ -744,7 +808,21 @@ class MuonAdamWPack(OptimizerPack):
                     continue
             else:
                 active_pack_idx = None
-            if active_pack_idx is None or len(active_pack_idx) == len(update):
+            widths = group.get('muon_grouped_widths')
+            if self._muon_backend == 'grouped' and widths is not None:
+                from tabpackage._muon_grouped import GroupedNewtonSchulz
+
+                runtime = self._grouped_runtimes.setdefault(
+                    id(p), GroupedNewtonSchulz()
+                )
+                update = runtime(
+                    update,
+                    widths,
+                    newton_schulz_steps,
+                    active_pack_idx,
+                    rectangular=group.get('muon_grouped_rectangular', False),
+                )
+            elif active_pack_idx is None or len(active_pack_idx) == len(update):
                 update = self._zeropower_via_newtonschulz5(
                     update, steps=newton_schulz_steps
                 )
@@ -908,6 +986,9 @@ def optimizer_pack_remove(
                 group['params'][i] = p_new
                 if state is not None:
                     optimizer.state[p_new] = state
+
+    if isinstance(optimizer, MuonAdamWPack):
+        optimizer._grouped_runtimes.clear()
 
 
 def optimizer_pack_reset_state(

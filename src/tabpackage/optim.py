@@ -595,8 +595,8 @@ class MuonAdamWPack(OptimizerPack):
         Args:
             muon_backend: ``'padded'`` (default) or experimental ``'grouped'``.
                 Grouped GEMM keeps BF16 Newton-Schulz precision and requires CUDA,
-                build tools and the extension source in this repository's
-                ``dev/veleboks/grouped_gemm`` directory. It applies only to groups
+                CUDA >=12.5, build tools and the bundled extension source in
+                ``tabpackage/csrc``. It applies only to groups
                 marked ``grouped_square`` or ``grouped_rectangular``. Rectangular
                 groups retain all input columns and use actual output widths;
                 wide rectangular groups can use cuBLASLt for the final NS product

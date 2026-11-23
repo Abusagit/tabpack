@@ -30,10 +30,7 @@ def extension():
             name="tabpack_grouped_bf16",
             build_directory=str(build.resolve()),
             sources=[
-                str(
-                    Path(__file__).resolve().parents[2]
-                    / "dev/veleboks/grouped_gemm/grouped.cpp"
-                )
+                str(Path(__file__).with_name('csrc') / 'muon_grouped.cpp')
             ],
             extra_include_paths=[str(cuda / "include")],
             extra_cflags=["-O2"],

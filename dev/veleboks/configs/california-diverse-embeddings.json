@@ -1,6 +1,6 @@
 {
   "name": "california-diverse-embeddings",
-  "seed": 42,
+  "seed": 0,
   "n_models": 64,
   "max_ensemble_size": 64,
   "widths": [
@@ -46,5 +46,7 @@
   "profile_epoch": 3,
   "dataset": "california-sklearn",
   "autocast": "bfloat16",
-  "use_paper_cache": false
+  "use_paper_cache": false,
+  "use_cublas_muon": false,
+  "muon_skip_zero_updates": false
 }

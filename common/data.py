@@ -87,7 +87,7 @@ def load(cfg: dict) -> tuple[dict, dict]:
     roots = [Path(cfg['data_root'])] if cfg.get('data_root') else DEFAULT_DATA_ROOTS
     data_root = roots[0]
     paper = Path('.cache') / f'{PAPER_CACHE_ALIASES.get(name, name)}-paper'
-    if cfg.get('use_paper_cache', True) and (paper / 'metadata.json').is_file():
+    if (paper / 'metadata.json').is_file():
         return _paper_cache(paper)
 
     dirs = [d for r in roots for d in (r / 'tabred' / name, r / name)]

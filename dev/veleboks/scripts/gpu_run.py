@@ -4,8 +4,7 @@
 Example (from the repository root)::
 
     python3 dev/veleboks/scripts/gpu_run.py --gpu 4 -- \
-        dev/veleboks/run_profiling_experiment.py \
-        dev/veleboks/configs/paper_california.json --output ../output
+        dev/veleboks/scripts/benchmark_common.py --output ../output
 """
 
 import argparse
@@ -65,8 +64,10 @@ def main():
         output('git', 'rev-parse', '--show-toplevel', text=True).strip()
     ).resolve()
     os.chdir(root)
+    # The local snapshot launcher also runs under macOS system Python 3.9.
+    now = datetime.datetime.now(datetime.timezone.utc)  # noqa: UP017
     run_id = (
-        datetime.datetime.now(datetime.UTC).strftime('%Y%m%dT%H%M%SZ')
+        now.strftime('%Y%m%dT%H%M%SZ')
         + '-'
         + uuid.uuid4().hex[:8]
     )

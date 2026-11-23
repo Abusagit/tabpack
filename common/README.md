@@ -348,3 +348,22 @@ can be compared directly.
 Every `report.json` records the environment (GPU, compute capability, torch, CUDA,
 Triton), the config, the per-phase numbers, the peak memory and the wall time. When you
 post results, include the run directory name and the GPU it ran on.
+
+## 6. cuBLAS Muon
+
+`common/` is based on Abusagit/tabpack
+[`common_logic` commit dfe0b085](https://github.com/Abusagit/tabpack/tree/dfe0b0852f8ce9a65782267ae13653262c8f2430/common).
+Set `"use_cublas_muon": true` in the JSON config to enable the experimental
+grouped GEMM / cuBLASLt Muon backend. Missing or `false` keeps native Muon.
+This requires CUDA >=12.5, BF16-capable CUDA hardware, a C++ compiler and `ninja`.
+The extension source is bundled in `src/tabpackage/csrc/muon_grouped.cpp`.
+It cannot be combined with compiled Muon. Forward/backward and AdamW are unchanged.
+
+For a short warmed window that ends before validation/ensembling:
+
+```bash
+python -m common.run CONFIG --epoch 1 --wait 20 --warmup 3 --steps 20 \
+    --stop-after-profile --out ../output
+```
+
+This is a speed check, not a quality/convergence experiment.

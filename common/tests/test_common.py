@@ -91,6 +91,46 @@ def test_phase_order_and_no_behaviour_change():
         assert torch.equal(a['steps'], b['steps'])
 
 
+@pytest.mark.parametrize('enabled', [False, True])
+def test_config_cublas_and_bounded_window(tmp_path, enabled):
+    cfg = {**CFG, 'use_cublas_muon': enabled}
+    config = tmp_path / 'config.json'
+    config.write_text(json.dumps(cfg))
+    report = run.main(
+        [
+            str(config),
+            '--epoch',
+            '1',
+            '--wait',
+            '2',
+            '--warmup',
+            '1',
+            '--steps',
+            '3',
+            '--stop-after-profile',
+            '--out',
+            str(tmp_path / 'result'),
+        ]
+    )
+    assert report['stopped_after_profile']
+    assert report['training_loop_steps'] == 6
+    assert report['config']['use_cublas_muon'] is enabled
+    assert report['sampled_hyperparameters'] == run.sample_hyperparameters(CFG)
+    assert all(
+        report['train_profile']['phase_ms'][p]['count'] == 3 for p in STEP_PHASES
+    )
+    assert 'eval' not in report['train_profile']['phase_ms']
+    assert tabpackage._instrument.get_instrumenter() is None
+    _arrays, meta = data.load(cfg)
+    kwargs = run.build_train_kwargs(cfg, meta, {}, 1)
+    assert kwargs['optimizer']['muon_backend'] == ('grouped' if enabled else 'padded')
+
+
+def test_config_cublas_rejects_non_boolean():
+    with pytest.raises(TypeError, match='must be a boolean'):
+        run.build_train_kwargs({**CFG, 'use_cublas_muon': 'false'}, {}, {}, 1)
+
+
 @pytest.mark.parametrize('mode', ['timing', 'torch', 'nvtx', 'memory'])
 def test_train_modes(cfg_path, tmp_path, mode):
     out = tmp_path / mode

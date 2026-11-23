@@ -1,7 +1,7 @@
 {
   "name": "homecredit-default-diverse-embeddings",
   "seed": 0,
-  "n_models": 64,
+  "n_models": 16,
   "max_ensemble_size": 32,
   "widths": [
     64,
@@ -43,5 +43,7 @@
     20.0
   ],
   "autocast": "bfloat16",
-  "use_paper_cache": false
+  "use_paper_cache": false,
+  "use_cublas_muon": false,
+  "muon_skip_zero_updates": false
 }

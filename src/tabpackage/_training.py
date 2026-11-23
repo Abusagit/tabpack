@@ -262,7 +262,9 @@ def make_optimizer_pack(
         # function is used to build separate per-layer parameter groups correctly.
         for i_block, block in enumerate(model_pack.backbone.blocks):
             parameter_group = cls.make_muon_parameter_group(
-                block.linear, grouped_square=i_block > 0
+                block.linear,
+                grouped_square=i_block > 0,
+                grouped_rectangular=i_block == 0,
             )
             if i_block == 0:
                 # The first block is used by all models, so none of the models has zero

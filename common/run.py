@@ -18,12 +18,13 @@ import random
 import time
 from pathlib import Path
 
+import torch
+
 import tabpackage
 import tabpackage._instrument
 import tabpackage.ensemble
 import tabpackage.nn
 import tabpackage.optim
-import torch
 from common import data
 from common.profiling import MODES, Instrumenter, Schedule
 
@@ -432,6 +433,13 @@ def main(argv=None):
     infer_inst = make_inst(0) if args.mode == "infer" else None
 
     kwargs = VARIANTS[args.variant](build_train_kwargs(cfg, meta, datasets, max_epochs))
+    backend_setup_seconds = 0.0
+    if args.variant == "grouped":
+        from tabpackage._muon_grouped import extension
+
+        setup_start = time.perf_counter()
+        extension()
+        backend_setup_seconds = time.perf_counter() - setup_start
     print(
         json.dumps(
             {
@@ -462,6 +470,7 @@ def main(argv=None):
         "steps_per_epoch": steps_per_epoch,
         "max_epochs": max_epochs,
         "train_wall_seconds": time.perf_counter() - start,
+        "backend_setup_seconds": backend_setup_seconds,
         "train_peak_allocated_mib": torch.cuda.max_memory_allocated() / 2**20,
         "training_loop_seconds": trained.get_training_loop_time(),
         "training_loop_steps": trained.get_training_loop_step(),

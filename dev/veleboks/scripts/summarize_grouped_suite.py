@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from itertools import pairwise
 from pathlib import Path
 
 
@@ -21,6 +22,28 @@ def main():
         for key in ("config", "sampled_hyperparameters", "data_hashes", "environment"):
             if native[key] != grouped[key]:
                 raise ValueError(f"{path.parent.name}: mismatched {key}")
+        intervals = {}
+        for label, report in (("native", native), ("grouped", grouped)):
+            boundaries = report.get("epoch_boundaries", [])
+            intervals[label] = [
+                right["time"] - left["time"]
+                for left, right in pairwise(boundaries)
+            ]
+        steady = None
+        if intervals["native"] and len(intervals["native"]) == len(
+            intervals["grouped"]
+        ):
+            steady = {
+                "native_epoch_intervals_seconds": intervals["native"],
+                "grouped_epoch_intervals_seconds": intervals["grouped"],
+                "time_reduction_percent": 100 * (
+                    1 - sum(intervals["grouped"]) / sum(intervals["native"])
+                ),
+                "includes": (
+                    "previous ensemble update, training and validation; "
+                    "first epoch excluded"
+                ),
+            }
         pairs.append(
             {
                 "case": path.parent.name.removesuffix("-native"),
@@ -32,6 +55,7 @@ def main():
                 "grouped_scores": grouped["scores"],
                 "native_epochs": native["epochs_completed"],
                 "grouped_epochs": grouped["epochs_completed"],
+                "after_first_epoch": steady,
             }
         )
     print(json.dumps(pairs, indent=2))

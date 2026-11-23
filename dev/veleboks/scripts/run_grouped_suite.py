@@ -19,11 +19,16 @@ def main():
     p.add_argument("--output", default="../output")
     p.add_argument("--data-root", required=True)
     p.add_argument("--smoke", action="store_true")
+    p.add_argument("--max-epochs", type=int)
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
     p.add_argument("--profiles", action="store_true")
     p.add_argument("--profiles-only", action="store_true")
     p.add_argument("--n-models", type=int)
+    p.add_argument("--tabred-n-models", type=int)
     p.add_argument("--after-suite", type=Path)
+    p.add_argument("--wait-free-gpu", action="store_true")
+    p.add_argument("--gpu-memory-limit-mib", type=int, default=1200)
+    p.add_argument("--skip-values", nargs="+", type=int, choices=(0, 1), default=[0, 1])
     p.add_argument(
         "--dataset",
         nargs="+",
@@ -48,11 +53,42 @@ def main():
         cfg["data_root"] = os.path.expanduser(args.data_root)
         if args.n_models:
             cfg["n_models"] = args.n_models
+        elif args.tabred_n_models and dataset != "california":
+            cfg["n_models"] = args.tabred_n_models
+        if args.max_epochs is not None:
+            if args.max_epochs < 1:
+                p.error("--max-epochs must be positive")
+            cfg["max_epochs"] = args.max_epochs
         for seed in [0] if args.smoke else args.seeds:
             cfg["seed"] = seed
-            for skip in (False, True):
+            for skip_value in args.skip_values:
+                skip = bool(skip_value)
                 cfg["muon_skip_zero_updates"] = skip
                 for variant in ("native", "grouped"):
+                    if args.wait_free_gpu:
+                        import torch
+
+                        uuid = str(torch.cuda.get_device_properties(0).uuid)
+                        if not uuid.startswith("GPU-"):
+                            uuid = "GPU-" + uuid
+                        while True:
+                            status = subprocess.check_output(
+                                [
+                                    "nvidia-smi",
+                                    "--id=" + uuid,
+                                    "--query-gpu=memory.used,utilization.gpu",
+                                    "--format=csv,noheader,nounits",
+                                ],
+                                text=True,
+                            )
+                            memory, utilization = map(int, status.strip().split(","))
+                            if memory < args.gpu_memory_limit_mib and utilization < 5:
+                                break
+                            print(
+                                f"Waiting for {uuid}: {memory} MiB, {utilization}%",
+                                flush=True,
+                            )
+                            time.sleep(30)
                     name = f"{dataset}-seed{seed}-skip{int(skip)}-{variant}"
                     case = out / name
                     config = out / f"{name}.json"
@@ -72,13 +108,33 @@ def main():
                     if args.smoke:
                         cmd += ["--max-epochs", "2"]
                     with (out / f"{name}.log").open("w") as log:
-                        code = (
-                            0
-                            if args.profiles_only
-                            else subprocess.call(
-                                cmd, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT
-                            )
+                        import torch
+
+                        uuid = str(torch.cuda.get_device_properties(0).uuid)
+                        uuid = uuid if uuid.startswith("GPU-") else "GPU-" + uuid
+                        telemetry = (out / f"{name}-gpu.csv").open("w")
+                        monitor = subprocess.Popen(
+                            [
+                                "nvidia-smi",
+                                "--id=" + uuid,
+                                "--query-gpu=timestamp,uuid,utilization.gpu,memory.used,clocks.sm,power.draw,temperature.gpu",
+                                "--format=csv,noheader,nounits",
+                                "--loop-ms=500",
+                            ],
+                            stdout=telemetry,
                         )
+                        try:
+                            code = (
+                                0
+                                if args.profiles_only
+                                else subprocess.call(
+                                    cmd, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT
+                                )
+                            )
+                        finally:
+                            monitor.terminate()
+                            monitor.wait()
+                            telemetry.close()
                     (out / f"{name}.exit-code").write_text(str(code))
                     print(name, code, flush=True)
                     if (

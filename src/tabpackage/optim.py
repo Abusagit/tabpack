@@ -492,7 +492,7 @@ def _zeropower_via_newtonschulz5(G, steps: int):
 # fmt: on
 
 
-def _muon_grouped_widths(module):
+def _muon_grouped_widths(module, *, rectangular=False):
     shape = module.weight.shape
     widths = []
     for features, maximum in (
@@ -506,6 +506,8 @@ def _muon_grouped_widths(module):
             if features is None
             else features.clone()
         )
+    if rectangular:
+        return widths[1] if shape[1] <= shape[2] else None
     if shape[1] != shape[2] or not torch.equal(*widths):
         return None
     return widths[0]
@@ -531,13 +533,17 @@ class MuonAdamWPack(OptimizerPack):
 
     @staticmethod
     def make_muon_parameter_group(
-        module: tabpackage.nn.LinearPack, *, grouped_square: bool = False
+        module: tabpackage.nn.LinearPack,
+        *,
+        grouped_square: bool = False,
+        grouped_rectangular: bool = False,
     ) -> dict[str, Any]:
         """Create a single-parameter group to be optimized with Muon.
 
-        Set ``grouped_square`` only for square hidden layers after the first block.
-        Their actual widths are retained for the experimental grouped backend.
-        Rectangular groups continue to use the padded implementation.
+        Use ``grouped_square`` for square hidden layers, or
+        ``grouped_rectangular`` for the first block. The latter trims only output
+        rows and retains every input column, including interleaved embedding masks.
+        Tall padded matrices retain the native transpose-based implementation.
         """
         if (
             module.max_in_features > module.max_out_features
@@ -555,8 +561,11 @@ class MuonAdamWPack(OptimizerPack):
             'params': [module.weight],
             'muon': True,
             'muon_update_scale': compute_muon_update_scale_pack(module),
-            'muon_grouped_widths': _muon_grouped_widths(module)
-            if grouped_square
+            'muon_grouped_rectangular': grouped_rectangular,
+            'muon_grouped_widths': _muon_grouped_widths(
+                module, rectangular=grouped_rectangular
+            )
+            if grouped_square or grouped_rectangular
             else None,
         }
 
@@ -588,9 +597,13 @@ class MuonAdamWPack(OptimizerPack):
                 Grouped GEMM keeps BF16 Newton-Schulz precision and requires CUDA,
                 build tools and the extension source in this repository's
                 ``dev/veleboks/grouped_gemm`` directory. It applies only to groups
-                marked ``grouped_square``. Updates outside their actual square
-                regions must be zero; a synchronizing check enforces this every
-                call. Parameter padding may remain nonzero. Other groups use the
+                marked ``grouped_square`` or ``grouped_rectangular``. Rectangular
+                groups retain all input columns and use actual output widths;
+                wide rectangular groups can use cuBLASLt for the final NS product
+                with separate input/output buffers, avoiding a padded copy.
+                Tall groups fall back to native. Excluded update regions must be
+                zero; a synchronizing check enforces this every call. Parameter
+                padding may remain nonzero. Other groups use the
                 original implementation. Compilation of Muon is incompatible
                 with the experimental backend.
             muon_skip_zero_updates: if `True`, the members with all-zero updates are
@@ -725,7 +738,8 @@ class MuonAdamWPack(OptimizerPack):
                 )
                 if group.get('muon_grouped_widths') is not None:
                     group['muon_grouped_widths'] = _muon_grouped_widths(
-                        muon_parameter_to_module[group['params'][0]]
+                        muon_parameter_to_module[group['params'][0]],
+                        rectangular=group.get('muon_grouped_rectangular', False),
                     )
         self._grouped_runtimes.clear()
 
@@ -801,7 +815,13 @@ class MuonAdamWPack(OptimizerPack):
                 runtime = self._grouped_runtimes.setdefault(
                     id(p), GroupedNewtonSchulz()
                 )
-                update = runtime(update, widths, newton_schulz_steps, active_pack_idx)
+                update = runtime(
+                    update,
+                    widths,
+                    newton_schulz_steps,
+                    active_pack_idx,
+                    rectangular=group.get('muon_grouped_rectangular', False),
+                )
             elif active_pack_idx is None or len(active_pack_idx) == len(update):
                 update = self._zeropower_via_newtonschulz5(
                     update, steps=newton_schulz_steps

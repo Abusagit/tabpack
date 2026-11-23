@@ -1,3 +1,7 @@
 # Large local traces and immutable GPU run artifacts.
 /profiles/
 /artifacts/
+# Generated per-run reports and profile analyses stay local. Keep only summaries.
+/results/**/*.json
+!/results/tabred-torch214-a4000/summary.json
+!/results/muon-first-linear/current-speedups.json

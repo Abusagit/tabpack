@@ -92,6 +92,8 @@ class TritonGroupedLinearPack(nn.LinearPack):
                 0 < o <= self.max_out_features for o in out_values
             ):
                 raise ValueError('Packed feature counts exceed the linear layout')
+            in_sizes = torch.full_like(in_sizes, self.max_in_features)
+            in_values = [self.max_in_features] * self.pack_size
 
             def prefix(rows: int | list[int], columns: list[int]) -> tuple[Tensor, int]:
                 values = [0]

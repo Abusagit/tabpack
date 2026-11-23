@@ -6,6 +6,11 @@ import triton.language as tl
 
 from dev.nosorozhek.custom.kernels.newton_schulz import NewtonSchulz
 from dev.nosorozhek.custom.kernels.utils import resolve_matmul_dtypes
+from dev.nosorozhek.custom.triton_linear_coo import (
+    TritonCOOLinearPack,
+    TritonCOOLinearPackHilbert,
+    TritonCOOLinearPackZ,
+)
 from dev.nosorozhek.custom.triton_linear_pack import TritonGroupedLinearPack
 from tabpackage import nn
 
@@ -53,7 +58,16 @@ def test_matmul_rejects_cpu_operands():
 
 @pytest.mark.parametrize('amp_dtype', [torch.float16, torch.bfloat16])
 @pytest.mark.parametrize('input_dtype', [torch.float32, torch.float16, torch.bfloat16])
-def test_linear_autocast(amp_dtype, input_dtype):
+@pytest.mark.parametrize(
+    'linear_type',
+    [
+        TritonGroupedLinearPack,
+        TritonCOOLinearPack,
+        TritonCOOLinearPackZ,
+        TritonCOOLinearPackHilbert,
+    ],
+)
+def test_linear_autocast(amp_dtype, input_dtype, linear_type):
     torch.manual_seed(42)
     kwargs = {
         'in_features': [5, 16],
@@ -64,7 +78,7 @@ def test_linear_autocast(amp_dtype, input_dtype):
         'device': 'cuda',
     }
     original = nn.LinearPack(**kwargs)
-    custom = TritonGroupedLinearPack(**kwargs)
+    custom = linear_type(**kwargs)
     custom.load_state_dict(original.state_dict())
     source = torch.randn(2, 33, 16, device='cuda', dtype=input_dtype)
     x = source.clone().requires_grad_()

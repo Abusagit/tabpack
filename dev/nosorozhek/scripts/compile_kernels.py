@@ -70,7 +70,6 @@ def main() -> None:
                 64,
                 64,
                 64,
-                64,  # MAX_K
                 False,  # TRANSPOSE_LHS
                 True,  # TRANSPOSE_RHS
                 dtype,  # bias

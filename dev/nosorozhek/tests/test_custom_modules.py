@@ -399,3 +399,100 @@ def test_linear_interleaved_embeddings(linear_type, amp_dtype):
     ]
     for actual, expected in pairs:
         torch.testing.assert_close(actual, expected, rtol=0.01, atol=0.02)
+
+
+@pytest.mark.parametrize('algorithm', ['standard', 'gram'])
+@pytest.mark.parametrize('max_out', [3, 11])
+@pytest.mark.parametrize('steps', [1, 5])
+def test_muon_interleaved_columns(algorithm, max_out, steps):
+    torch.manual_seed(42)
+    layers = [
+        nn.LinearPack(
+            in_features=[4, 8], out_features=[2, max_out], pack_size=2, device='cuda'
+        )
+        for _ in range(2)
+    ]
+    layers[1].load_state_dict(layers[0].state_dict())
+    reference_type = (
+        TorchGramMuonAdamWPack if algorithm == 'gram' else optim.MuonAdamWPack
+    )
+    optimizers = [
+        cls(
+            [cls.make_muon_parameter_group(layer)],
+            adamw_lr=0.001,
+            muon_lr=0.01,
+            weight_decay=0.01,
+            muon_newton_schulz_steps=steps,
+            muon_skip_zero_updates=False,
+            allow_inplace_grad_mutation=False,
+            support_replacement=True,
+            pack_size=2,
+            **(
+                {'newton_schulz_algorithm': algorithm}
+                if cls is TritonMuonAdamWPack else {}
+            ),
+        )
+        for cls, layer in zip((reference_type, TritonMuonAdamWPack), layers)
+    ]
+    for replaced in (False, True):
+        if replaced:
+            idx = torch.tensor([0], device='cuda')
+            for layer, optimizer in zip(layers, optimizers):
+                layer.replace(pack_idx=idx, in_features=[6], out_features=[3])
+                optimizer.replace(pack_idx=idx, module=layer)
+            layers[1].load_state_dict(layers[0].state_dict())
+            assert not optimizers[1]._plans
+        gradient = torch.randn_like(layers[0].weight)
+        gradient[0].zero_()
+        columns = slice(6, 7) if replaced else slice(4, 6)
+        rows = 3 if replaced else 2
+        gradient[0, :rows, columns] = torch.randn_like(gradient[0, :rows, columns])
+        before = [layer.weight.detach().clone() for layer in layers]
+        for layer, optimizer in zip(layers, optimizers):
+            layer.weight.grad = gradient.clone()
+            optimizer.step()
+        expected, actual = [layer.weight - old for layer, old in zip(layers, before)]
+        assert expected[0, :rows, columns].abs().max() > 5e-4
+        torch.testing.assert_close(actual, expected, rtol=0.05, atol=2e-4)
+        torch.testing.assert_close(
+            optimizers[1].state[layers[1].weight]['muon_momentum_buffer'],
+            optimizers[0].state[layers[0].weight]['muon_momentum_buffer'],
+            rtol=0,
+            atol=0,
+        )
+        assert layers[1] in optimizers[1]._plans
+
+
+@pytest.mark.parametrize('algorithm', ['standard', 'gram'])
+def test_muon_missing_gradient(algorithm, caplog):
+    layer = nn.LinearPack(in_features=8, out_features=3, pack_size=1, device='cuda')
+    optimizer = TritonMuonAdamWPack(
+        [TritonMuonAdamWPack.make_muon_parameter_group(layer)],
+        adamw_lr=0.001,
+        muon_lr=0.01,
+        weight_decay=0.01,
+        newton_schulz_algorithm=algorithm,
+        allow_inplace_grad_mutation=False,
+        pack_size=1,
+    )
+    before = layer.weight.detach().clone()
+    optimizer.step()
+    assert not optimizer.state
+    assert not optimizer._plans
+    torch.testing.assert_close(layer.weight, before, rtol=0, atol=0)
+    assert not caplog.records
+
+    layer.weight.grad = torch.randn_like(layer.weight)
+    optimizer.step()
+    layer.weight.grad = None
+    before = layer.weight.detach().clone()
+    momentum = optimizer.state[layer.weight]['muon_momentum_buffer'].clone()
+    plan = optimizer._plans[layer]
+    caplog.clear()
+    optimizer.step()
+    torch.testing.assert_close(layer.weight, before, rtol=0, atol=0)
+    torch.testing.assert_close(
+        optimizer.state[layer.weight]['muon_momentum_buffer'], momentum, rtol=0, atol=0
+    )
+    assert optimizer._plans[layer] is plan
+    assert not caplog.records

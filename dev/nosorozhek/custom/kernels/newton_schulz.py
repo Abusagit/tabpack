@@ -100,11 +100,7 @@ class NewtonSchulz:
             if module.out_features is None
             else module.out_features.tolist()
         )
-        cols = (
-            [module.max_in_features] * module.pack_size
-            if module.in_features is None
-            else module.in_features.tolist()
-        )
+        cols = [module.max_in_features] * module.pack_size
         self.transpose = module.max_out_features > module.max_in_features
         if self.transpose:
             rows, cols = cols, rows

@@ -61,13 +61,11 @@ class TritonMuonAdamWPack(optim.MuonAdamWPack):
 
     def _step_muon(self, group: dict) -> None:
         (weight,) = group['params']
+        if weight.grad is None:
+            return
         # Pack removal replaces the Parameter but keeps the module.
         module = next((m for m in self._muon_modules if m.weight is weight), None)
-        if (
-            module is None
-            or weight.grad is None
-            or weight.device.type != 'cuda'
-        ):
+        if module is None or weight.device.type != 'cuda':
             _logger.warning(
                 'Triton Muon falling back to the base optimizer '
                 '(weight_shape=%s, device=%s, module_found=%s, gradient_present=%s)',

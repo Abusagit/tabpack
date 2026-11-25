@@ -87,7 +87,6 @@ def _coo_matmul(
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
-    MAX_K: tl.constexpr,
     TRANSPOSE_LHS: tl.constexpr,
     TRANSPOSE_RHS: tl.constexpr,
     bias_ptr,
@@ -105,7 +104,7 @@ def _coo_matmul(
     rows = tile_row * BLOCK_M + tl.arange(0, BLOCK_M)
     columns = tile_column * BLOCK_N + tl.arange(0, BLOCK_N)
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=ACC_DTYPE)
-    for k_block in tl.static_range(0, tl.cdiv(MAX_K, BLOCK_K)):
+    for k_block in range(tl.cdiv(k_size, BLOCK_K)):
         k = k_block * BLOCK_K + tl.arange(0, BLOCK_K)
         if TRANSPOSE_LHS:
             lhs = (
@@ -189,7 +188,6 @@ def _launch(
         BLOCK_M=block_m,
         BLOCK_N=block_n,
         BLOCK_K=block_k,
-        MAX_K=padded_k,
         TRANSPOSE_LHS=transpose_lhs,
         TRANSPOSE_RHS=transpose_rhs,
         bias_ptr=bias,

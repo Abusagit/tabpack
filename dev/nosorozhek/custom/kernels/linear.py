@@ -27,7 +27,6 @@ def _packed_matmul(
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
-    MAX_K: tl.constexpr,
     TRANSPOSE_LHS: tl.constexpr,
     TRANSPOSE_RHS: tl.constexpr,
     bias_ptr,
@@ -50,7 +49,7 @@ def _packed_matmul(
 
     Size arrays give valid M, N, and K. Missing row or reduction sizes use
     the padded extent. Each program finds its tile via prefix_ptr and
-    accumulates over MAX_K in BLOCK_K steps with padding masked.
+    accumulates over each matrix's valid K in BLOCK_K steps with padding masked.
     """
     pid = tl.program_id(0)
     matrix = _locate_matrix(prefix_ptr, n_matrices, pid, SEARCH_STEPS)
@@ -66,7 +65,7 @@ def _packed_matmul(
         else tl.load(reduction_sizes_ptr + matrix)
     )
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=ACC_DTYPE)
-    for k_block in tl.static_range(0, tl.cdiv(MAX_K, BLOCK_K)):
+    for k_block in range(tl.cdiv(k_size, BLOCK_K)):
         k = k_block * BLOCK_K + tl.arange(0, BLOCK_K)
         if TRANSPOSE_LHS:
             lhs = (
@@ -167,7 +166,6 @@ class _TritonLinearFunction(Function):
             SEARCH_STEPS=x.shape[0].bit_length(),
             INPUT_PRECISION=input_precision,
             ACC_DTYPE=acc_dtype,
-            MAX_K=max_in,
             TRANSPOSE_LHS=False,
             TRANSPOSE_RHS=True,
             bias_ptr=bias,
@@ -212,7 +210,6 @@ class _TritonLinearFunction(Function):
             SEARCH_STEPS=x.shape[0].bit_length(),
             INPUT_PRECISION=input_precision,
             ACC_DTYPE=acc_dtype,
-            MAX_K=ctx.max_out,
             TRANSPOSE_LHS=False,
             TRANSPOSE_RHS=False,
             bias_ptr=None,
@@ -238,7 +235,6 @@ class _TritonLinearFunction(Function):
             SEARCH_STEPS=x.shape[0].bit_length(),
             INPUT_PRECISION=input_precision,
             ACC_DTYPE=acc_dtype,
-            MAX_K=x.shape[1],
             TRANSPOSE_LHS=True,
             TRANSPOSE_RHS=False,
             bias_ptr=None,

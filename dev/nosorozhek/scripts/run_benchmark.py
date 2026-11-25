@@ -15,18 +15,26 @@ from typing import Any
 import pandas as pd
 
 import common.run
+from dev.nosorozhek.custom.torch_gram_muon import TorchGramMuonAdamWPack
+from dev.nosorozhek.custom.triton_linear_coo import (
+    TritonCOOLinearPack,
+    TritonCOOLinearPackHilbert,
+    TritonCOOLinearPackZ,
+)
 from dev.nosorozhek.custom.triton_linear_pack import TritonGroupedLinearPack
 from dev.nosorozhek.custom.triton_muon import TritonMuonAdamWPack
 
-CONFIG_PATH = Path('dev/nosorozhek/configs/diverse_california.json')
-OUTPUT_DIR = Path('dev/nosorozhek/benchmarking/precision-difference/')
+# CONFIG_PATH = Path('dev/nosorozhek/configs/diverse_california.json')
+CONFIG_PATH = Path('common/configs/maps_routing.json')
+OUTPUT_DIR: Path
 
 WARMUPS = 1
-REPEATS = 10  # Total full-training runs per case across both rounds.
-
 
 class LinearCases(tuple, Enum):
     Original = ('', None)
+    COO = ('coo', {'type': TritonCOOLinearPack})
+    COOZ = ('coo-z', {'type': TritonCOOLinearPackZ})
+    COOHilbert = ('coo-hilbert', {'type': TritonCOOLinearPackHilbert})
     Triton = (
         'linear',
         {
@@ -51,6 +59,18 @@ class MuonCases(tuple, Enum):
             'num_stages': 2,
         },
     )
+    Gram = (
+        'gram-muon',
+        {
+            'block_m': 64,
+            'block_n': 64,
+            'block_k': 64,
+            'num_warps': 4,
+            'num_stages': 2,
+            'newton_schulz_algorithm': 'gram',
+        },
+    )
+    TorchGram = ('torch-gram-muon', {'type': TorchGramMuonAdamWPack})
 
 
 class SkipUpdates(Enum):
@@ -64,6 +84,18 @@ class SkipUpdates(Enum):
 Case = tuple[str, tuple[dict[str, Any] | None, dict[str, Any] | None, SkipUpdates]]
 EXTRA_CASES: list[Case] = []
 
+
+REPEATS = 10
+COMPILE_MODEL = True
+CASE_CONFIGS = [
+    (LinearCases.Original, MuonCases.Original, SkipUpdates.NoSkip),
+    (LinearCases.COO, MuonCases.Original, SkipUpdates.NoSkip),
+    (LinearCases.COOZ, MuonCases.Original, SkipUpdates.NoSkip),
+    (LinearCases.COOHilbert, MuonCases.Original, SkipUpdates.NoSkip),
+    (LinearCases.Triton, MuonCases.Triton, SkipUpdates.NoSkip),
+    (LinearCases.Triton, MuonCases.TorchGram, SkipUpdates.NoSkip),
+    (LinearCases.Triton, MuonCases.Gram, SkipUpdates.NoSkip),
+]
 
 BENCHMARKS: list[Case] = [
     (
@@ -79,12 +111,7 @@ BENCHMARKS: list[Case] = [
         ),
         (linear, muon, skip_zero_updates),
     )
-    for (linear_name, linear), (muon_name, muon), skip_zero_updates in [
-        (LinearCases.Original, MuonCases.Original, SkipUpdates.NoSkip),
-        (LinearCases.Triton, MuonCases.Original, SkipUpdates.NoSkip),
-        (LinearCases.Original, MuonCases.Triton, SkipUpdates.NoSkip),
-        (LinearCases.Triton, MuonCases.Triton, SkipUpdates.NoSkip),
-    ]
+    for (linear_name, linear), (muon_name, muon), skip_zero_updates in CASE_CONFIGS
 ] + EXTRA_CASES
 
 
@@ -95,10 +122,11 @@ def _install_case(
 ) -> Callable[[dict[str, Any]], dict[str, Any]]:
     def variant(kwargs: dict[str, Any]) -> dict[str, Any]:
         if linear is not None:
-            if linear:
-                for key, value in linear.items():
-                    setattr(TritonGroupedLinearPack, key, value)
-            common.run.tabpackage.nn.LinearPack = TritonGroupedLinearPack
+            linear_options = dict(linear)
+            linear_type = linear_options.pop('type', TritonGroupedLinearPack)
+            for key, value in linear_options.items():
+                setattr(linear_type, key, value)
+            common.run.tabpackage.nn.LinearPack = linear_type
 
         optimizer = {
             **kwargs['optimizer'],
@@ -157,7 +185,7 @@ def _run_case(
     config = json.loads(config_path.read_text())
     config.update(
         dataset=config.get('dataset', 'california-sklearn'),
-        compile_model=True,
+        compile_model=COMPILE_MODEL,
         max_epochs=1 if trace else config.get('max_epochs'),
         profile_epoch=1,
         name=f'{config.get("name", config_path.stem)}-{name}',
@@ -273,6 +301,9 @@ def _aggregate_checkpoints() -> pd.DataFrame:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        '--output-dir', type=Path, required=True, help='Benchmark output directory.'
+    )
+    parser.add_argument(
         '--trace', action='store_true', help='Capture common.run torch traces.'
     )
     parser.add_argument(
@@ -289,6 +320,8 @@ def main() -> None:
         help='Rebuild the aggregate CSVs from per-case checkpoints.',
     )
     args = parser.parse_args()
+    global OUTPUT_DIR
+    OUTPUT_DIR = args.output_dir
 
     names = [name for name, _ in BENCHMARKS]
     if len(set(names)) != len(names):

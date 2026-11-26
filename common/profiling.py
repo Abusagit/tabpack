@@ -37,6 +37,12 @@ import torch
 
 MODES = ('none', 'timing', 'torch', 'nvtx', 'memory')
 STEP_START_PHASES = ('gather', 'infer')  # first phase of a training / inference step
+
+
+class StepLimitReached(Exception):
+    """End a benchmark training run immediately after a completed optimizer step."""
+
+
 PHASES = (
     'gather',
     'forward',
@@ -94,6 +100,8 @@ class Instrumenter:
         schedule: Schedule,
         capture_phase: str | None = None,
         torch_options: dict | None = None,
+        layer_timings: bool = False,
+        stop_after: int | None = None,
     ):
         """capture_phase (nvtx mode only): instead of one capture range per active
         block, open cudaProfilerStart/Stop around each occurrence of this phase in
@@ -117,12 +125,60 @@ class Instrumenter:
         self.step = 0
         self.active = False  # inside the schedule window
         self.done = False
+        self.truncated = False
         self._capturing = False  # nvtx: inside a cudaProfilerStart/Stop range
         self._events = defaultdict(list)  # phase -> [(cycle, start_ev, end_ev)]
         self._memory = defaultdict(list)  # phase -> [{cycle, before, peak, after}]
         self._prof = None
         self._n_traces = 0
         self._window_events = None
+        self.num_steps = 0  # completed active steps, excluding wait and warmup
+        self.stop_after = stop_after
+        self.layer_timings = layer_timings
+        self._layer_handles = []
+        self._layer_events = defaultdict(list)
+        self._record_layers = False
+
+    def attach_model(self, model):
+        """Time the actual packed modules, including indexed backbone calls."""
+        if not self.layer_timings:
+            return
+        modules = [('num_module', model.num_module), ('cat_module', model.cat_module)]
+        for i, block in enumerate(model.backbone.blocks):
+            modules.extend(
+                (f'backbone.blocks.{i}.{name}', getattr(block, name))
+                for name in ('linear', 'activation', 'dropout')
+            )
+        modules.append(('output', model.output))
+        for name, module in modules:
+            if module is not None:
+                self._attach_layer(name, module)
+
+    def _attach_layer(self, name, module):
+        def begin(_module, _args):
+            if self._record_layers:
+                event = torch.cuda.Event(enable_timing=True)
+                event.record()
+                starts.append(event)
+
+        def end(_module, _args, _result):
+            if self._record_layers:
+                event = torch.cuda.Event(enable_timing=True)
+                event.record()
+                self._layer_events[name].append((starts.pop(), event))
+
+        starts = []
+        self._layer_handles.extend(
+            (module.register_forward_pre_hook(begin), module.register_forward_hook(end))
+        )
+
+    def close(self):
+        for handle in self._layer_handles:
+            handle.remove()
+        self._layer_handles.clear()
+        if self.active:
+            self.truncated = True
+            self._end()
 
     @property
     def start_step(self) -> int:
@@ -134,7 +190,8 @@ class Instrumenter:
         # The window opens at the first phase of step `start_step` (not at the previous
         # epoch's `eval`, which runs while the step counter already equals start_step).
         if (
-            not self.active
+            self.mode != 'none'
+            and not self.active
             and not self.done
             and self.step == self.start_step
             and name in STEP_START_PHASES
@@ -147,6 +204,8 @@ class Instrumenter:
         return self._phase(name)
 
     def step_end(self) -> None:
+        if self.active and self.schedule.where(self.step)[1] == 'active':
+            self.num_steps += 1
         if self.active and self.mode == 'torch' and self.schedule.active:
             self._prof.step()
         if self._capturing and self.capture_phase is None:
@@ -161,6 +220,9 @@ class Instrumenter:
             and self.step >= self.start_step + self.schedule.total
         ):
             self._end()
+
+        if self.step == self.stop_after:
+            raise StepLimitReached
 
     def epoch_end(self) -> None:
         if self.active and self.schedule.active == 0:
@@ -184,7 +246,11 @@ class Instrumenter:
                 torch.cuda.Event(enable_timing=True),
             )
             s.record()
-            yield
+            self._record_layers = self.layer_timings and name in ('forward', 'infer')
+            try:
+                yield
+            finally:
+                self._record_layers = False
             e.record()
             self._events[name].append((k, s, e))
         elif self.mode == 'torch':
@@ -293,8 +359,11 @@ class Instrumenter:
         prof.export_chrome_trace(str(trace))
         table = prof.key_averages().table(sort_by='self_cuda_time_total', row_limit=80)
         (self.out / f'operators{suffix}.txt').write_text(table + '\n')
-        steps = self.schedule.active or max(self.step + 1 - self.start_step, 1)
-        _try_summarize(trace, self.out / f'trace-summary{suffix}.json', steps)
+        steps = self.num_steps
+        if self.schedule.active:
+            steps = min(self.schedule.active, steps - k * self.schedule.active)
+        if steps > 0:
+            _try_summarize(trace, self.out / f'trace-summary{suffix}.json', steps)
         print(f'[profiling] torch: wrote {trace}', flush=True)
 
     def summary(self) -> dict:
@@ -302,11 +371,18 @@ class Instrumenter:
         res: dict = {
             'mode': self.mode,
             'schedule': dataclasses.asdict(self.schedule),
+            'num_steps': self.num_steps,
+            'window_complete': self.done and not self.truncated,
         }
         if self.mode == 'torch':
             res['traces'] = self._n_traces
         if self.mode == 'timing' and self._events:
             torch.cuda.synchronize()
+            if self.layer_timings:
+                res['layer_forward_ms'] = {
+                    name: _stats([s.elapsed_time(e) for s, e in events])
+                    for name, events in self._layer_events.items()
+                }
             ms = {
                 name: [(k, s.elapsed_time(e)) for k, s, e in evs]
                 for name, evs in self._events.items()

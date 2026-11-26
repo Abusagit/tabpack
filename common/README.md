@@ -178,7 +178,75 @@ What each mode records over the schedule:
 
 The schedule can run past the end of an epoch into the next one.
 
-**Run length.** A profiled training run (any `--profile` except `none`) stops at the end
+### Fixed-step runs and per-layer timings
+
+`--num-steps` sets the execution budget for any profiler mode, including `none`.
+`--steps` sets the number of steps recorded per profiling cycle. You can also set
+`"num_steps": 15` in the config. The command-line value takes precedence.
+
+From the repository root on a CUDA machine, run the California workload for 15
+optimizer steps. The first two steps are the wait period, the next three warm up
+the profiler, and the last ten contribute to the phase timings.
+
+```bash
+bash docker/run.sh python -m common.run common/configs/california_diverse_768.json \
+    --mode train --profile timing --num-steps 15 --wait 2 --warmup 3 --steps 10 \
+    --out .cache/california-phase
+```
+
+In `.cache/california-phase/report.json`, a completed run has `num_steps: 15`,
+`train_profile.num_steps: 10`, and `train_profile.window_complete: true`.
+`train_profile.phase_ms` contains timings for forward, backward, optimizer, and
+the other phases. Budgeted training starts profiling at epoch 1 unless you pass
+`--epoch`. Reaching the budget ends training after gradients are cleared and
+before the next evaluation or checkpoint.
+
+To measure individual forward layers, repeat the same run with `--layer-timings`.
+Keep the phase run separate because layer hooks add overhead, especially with
+compilation.
+
+```bash
+bash docker/run.sh python -m common.run common/configs/california_diverse_768.json \
+    --mode train --profile timing --num-steps 15 --wait 2 --warmup 3 --steps 10 \
+    --layer-timings --out .cache/california-layers
+```
+
+To list the slowest layers first, run this from the repository root:
+
+```bash
+jq '.train_profile.layer_forward_ms | to_entries | sort_by(-.value.mean)
+    | map({layer: .key, mean_ms: .value.mean, calls: .value.count})' \
+    .cache/california-layers/report.json
+```
+
+For example, `backbone.blocks.1.linear` is the second block’s linear layer.
+Each entry reports call count, mean, median, and total time for the measured
+forward calls. The hooks cover numerical and categorical embeddings, each block’s
+linear, activation and dropout modules, and the output layer. Backward and
+optimizer timings are per phase.
+
+For inference, use the same layer command with `--mode infer` and a fresh
+`--out` directory. The budget counts prediction batches and cycles through the
+test split as needed. The training that prepares the predictor has its own epoch
+budget. Read `infer_profile.layer_forward_ms` and `infer_profile.num_steps`
+in that run’s report.
+
+**Reading the clocks.** `train_wall_seconds` and `inference.seconds` use the host
+clock with CUDA synchronization at the boundaries. Training includes model setup
+and profiling overhead. The library's `training_loop_seconds` uses its own host
+timer and is null when a step budget interrupts training. `phase_ms`, `window_ms`,
+and `layer_forward_ms` measure elapsed CUDA events on the current stream, including
+idle gaps between the events. The window includes its wait and warmup steps.
+
+**Apple Silicon.** The native TabPack training API accepts `device='mps'` when
+`torch.backends.mps.is_available()`. The CUDA event runner, Triton kernels, and
+cuBLAS experiments here require NVIDIA hardware. For native MPS wall timing,
+call `torch.mps.synchronize()` immediately before and after the measured region;
+record PyTorch/macOS versions and whether CPU fallback is enabled. See the
+[package's MPS version note](../README.md#installation) and the
+[PyTorch MPS backend guide](https://docs.pytorch.org/docs/2.15/notes/mps.html).
+
+**Run length without a step budget.** A profiled training run (any `--profile` except `none`) stops at the end
 of the epoch in which the schedule finishes, so you don't wait for full training. Use
 `--full-training` to train for the config's `max_epochs` anyway, or `--max-epochs K` to
 set it explicitly. `--profile none` always uses the config's `max_epochs`. Infer mode

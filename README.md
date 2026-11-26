@@ -155,6 +155,7 @@ A high-level summary:
 
 ## Examples
 
+- For CUDA profiling, see [how to set a step budget, time individual layers, and read the results](common/README.md#fixed-step-runs-and-per-layer-timings).
 - [`examples/tabpack.py`](./examples/tabpack.py) is a well-documented end-to-end example covering TabPack training and export.
 - [`examples/tabpack_sklearn.ipynb`](./examples/tabpack_sklearn.ipynb) ([Colab](https://colab.research.google.com/github/yandex-research/tabpack/blob/main/examples/tabpack_sklearn.ipynb)) showcases scikit-learn API for TabPack.
 - `tabpackage._training` is the reference TabPack training implementation that can be copied and customized as needed.

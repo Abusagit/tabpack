@@ -144,6 +144,65 @@ def test_infer_mode(cfg_path, tmp_path):
     assert rep['inference']['n_rows'] == 1024
 
 
+@pytest.mark.parametrize('mode', ['train', 'infer'])
+@pytest.mark.parametrize('profile', ['none', 'timing', 'memory', 'torch', 'nvtx'])
+def test_execution_budget(cfg_path, tmp_path, mode, profile):
+    cfg = json.loads(cfg_path.read_text())
+    cfg_path.write_text(json.dumps({**cfg, 'num_steps': 3}))
+    flags = ['--layer-timings'] if profile == 'timing' else []
+    rep = run.main(
+        [
+            str(cfg_path),
+            '--mode',
+            mode,
+            '--profile',
+            profile,
+            '--warmup',
+            '1',
+            '--steps',
+            '2',
+            '--out',
+            str(tmp_path / 'out'),
+            *flags,
+        ]
+    )
+    assert rep['num_steps'] == rep['requested_num_steps'] == 3
+    prof = rep[f'{mode}_profile']
+    assert prof['num_steps'] == (0 if profile == 'none' else 2)
+    if profile == 'timing':
+        layers = prof['layer_forward_ms']
+        assert (
+            layers['backbone.blocks.0.linear']['count']
+            == layers['output']['count']
+            == 2
+        )
+        assert layers['output']['total'] > 0
+    assert tabpackage._instrument.get_instrumenter() is None
+
+
+def test_partial_window_and_cli_budget(cfg_path, tmp_path):
+    cfg = json.loads(cfg_path.read_text())
+    cfg_path.write_text(json.dumps({**cfg, 'num_steps': 7}))
+    rep = run.main(
+        [
+            str(cfg_path),
+            '--num-steps',
+            '3',
+            '--warmup',
+            '1',
+            '--steps',
+            '5',
+            '--layer-timings',
+            '--out',
+            str(tmp_path / 'partial'),
+        ]
+    )
+    assert rep['requested_num_steps'] == rep['training_loop_steps'] == 3
+    assert rep['train_profile']['num_steps'] == 2
+    assert not rep['train_profile']['window_complete']
+    assert rep['train_profile']['layer_forward_ms']['output']['count'] == 2
+
+
 @pytest.mark.parametrize('mode', ['torch', 'nvtx', 'memory'])
 def test_infer_modes(cfg_path, tmp_path, mode):
     out = tmp_path / mode

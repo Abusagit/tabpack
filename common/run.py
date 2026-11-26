@@ -26,7 +26,7 @@ import tabpackage.ensemble
 import tabpackage.nn
 import tabpackage.optim
 from common import data
-from common.profiling import MODES, Instrumenter, Schedule
+from common.profiling import MODES, Instrumenter, Schedule, StepLimitReached
 
 # >>> Variants: the single hook point for alternative implementations / kernels.
 # A variant receives the `tabpackage.train` kwargs and returns them (possibly modified).
@@ -224,7 +224,9 @@ def environment() -> dict:
 # >>> Inference
 
 
-def run_inference(trained, arrays, cfg, inst: Instrumenter | None, split='test'):
+def run_inference(
+    trained, arrays, cfg, inst: Instrumenter | None, split='test', *, num_steps=None
+):
     predictor = trained.make_predictor(
         ensemble_names=['greedy'], autocast_dtype=autocast_dtype(cfg)
     )
@@ -244,23 +246,31 @@ def run_inference(trained, arrays, cfg, inst: Instrumenter | None, split='test')
     if inst is not None:
         inst.schedule.start_step = 0
         inst.schedule.active = inst.schedule.active or len(batches)
-    n_steps = inst.schedule.total if inst is not None else len(batches)
+    n_steps = num_steps or (inst.schedule.total if inst is not None else len(batches))
+    if inst is not None:
+        inst.attach_model(predictor.model_pack)
     tabpackage._instrument.set_instrumenter(inst)
-    start = time.perf_counter()
-    with torch.inference_mode():
-        for i in range(n_steps):
-            xn, xc = batches[i % len(batches)]
-            with tabpackage._instrument.phase('infer'):
-                predictor(xn, xc)
-            tabpackage._instrument.step_end()
     torch.cuda.synchronize()
-    tabpackage._instrument.set_instrumenter(None)
+    start = time.perf_counter()
+    try:
+        with torch.inference_mode():
+            for i in range(n_steps):
+                xn, xc = batches[i % len(batches)]
+                with tabpackage._instrument.phase('infer'):
+                    predictor(xn, xc)
+                tabpackage._instrument.step_end()
+        torch.cuda.synchronize()
+        elapsed = time.perf_counter() - start
+    finally:
+        tabpackage._instrument.set_instrumenter(None)
+        if inst is not None:
+            inst.close()
     return {
         'split': split,
         'n_rows': n,
         'n_batches': len(batches),
         'n_steps': n_steps,
-        'seconds': time.perf_counter() - start,
+        'seconds': elapsed,
     }
 
 
@@ -342,7 +352,23 @@ def main(argv=None):
         type=Path,
         help='output dir; default .cache/runs/<name>-<mode>-<profile>-<variant>-<time>',
     )
+    p.add_argument(
+        '--num-steps',
+        type=int,
+        help='execution budget for the selected mode (config: num_steps)',
+    )
+    p.add_argument(
+        '--layer-timings',
+        action='store_true',
+        help='CUDA-event forward times for individual layers in timing mode',
+    )
     args = p.parse_args(argv)
+    cfg = json.loads(args.config.read_text())
+    num_steps = args.num_steps if args.num_steps is not None else cfg.get('num_steps')
+    if num_steps is not None and (type(num_steps) is not int or num_steps < 1):
+        p.error('num_steps must be a positive integer')
+    if args.layer_timings and args.profile != 'timing':
+        p.error('--layer-timings requires --profile timing')
     if args.warmup is None:
         args.warmup = 0 if args.steps == 0 else 1
     if args.steps == 0 and (args.wait or args.warmup or args.repeat != 1):
@@ -362,6 +388,8 @@ def main(argv=None):
             Schedule(start_step, args.steps, args.wait, args.warmup, args.repeat),
             capture_phase=args.capture_phase,
             torch_options=torch_options,
+            layer_timings=args.layer_timings,
+            stop_after=num_steps if args.mode == 'train' else None,
         )
 
     if args.capture_phase and args.profile != 'nvtx':
@@ -374,7 +402,6 @@ def main(argv=None):
             flush=True,
         )
 
-    cfg = json.loads(args.config.read_text())
     name = cfg.get('name', args.config.stem)
     out = args.out or Path('.cache/runs') / (
         f'{name}-{args.mode}-{args.profile}-{args.variant}-'
@@ -392,7 +419,7 @@ def main(argv=None):
     steps_per_epoch = math.ceil(len(arrays['train']['y']) / cfg['batch_size'])
 
     if args.mode == 'train':
-        epoch = args.epoch or cfg.get('profile_epoch', 3)
+        epoch = args.epoch or (1 if num_steps else cfg.get('profile_epoch', 3))
         train_inst = make_inst((epoch - 1) * steps_per_epoch)
         # Profiling needs training only up to the end of the epoch in which the
         # schedule finishes (the schedule may span several epochs).
@@ -401,6 +428,8 @@ def main(argv=None):
         needed_epochs = math.ceil(end_step / steps_per_epoch)
         if args.max_epochs:
             max_epochs = args.max_epochs
+        elif num_steps is not None:
+            max_epochs = math.ceil(num_steps / steps_per_epoch)
         elif args.profile == 'none' or args.full_training:
             max_epochs = cfg.get('max_epochs')
         else:
@@ -425,15 +454,26 @@ def main(argv=None):
     )
 
     tabpackage._instrument.set_instrumenter(
-        train_inst if train_inst and args.profile != 'none' else None
+        train_inst if args.profile != 'none' or num_steps is not None else None
     )
     torch.cuda.reset_peak_memory_stats()
+    torch.cuda.synchronize()
     start = time.perf_counter()
+    trained = None
     try:
         trained = tabpackage.train(**kwargs)
+    except StepLimitReached:
+        if train_inst is None or train_inst.step != num_steps:
+            raise
     finally:
         tabpackage._instrument.set_instrumenter(None)
+        if train_inst is not None:
+            train_inst.close()
     torch.cuda.synchronize()
+    train_wall_seconds = time.perf_counter() - start
+    training_steps = (
+        trained.get_training_loop_step() if trained is not None else train_inst.step
+    )
     report = {
         'name': name,
         'mode': args.mode,
@@ -442,14 +482,26 @@ def main(argv=None):
         'environment': environment(),
         'steps_per_epoch': steps_per_epoch,
         'max_epochs': max_epochs,
-        'train_wall_seconds': time.perf_counter() - start,
+        'train_wall_seconds': train_wall_seconds,
         'train_peak_allocated_mib': torch.cuda.max_memory_allocated() / 2**20,
-        'training_loop_seconds': trained.get_training_loop_time(),
-        'training_loop_steps': trained.get_training_loop_step(),
+        'training_loop_seconds': trained.get_training_loop_time()
+        if trained is not None
+        else None,
+        'training_loop_steps': training_steps,
+        'requested_num_steps': num_steps,
+        'num_steps': training_steps,
+        'timing_sources': {
+            'train_wall_seconds': 'synchronized host wall clock around training',
+            'training_loop_seconds': 'host wall clock inside the library training loop',
+            'inference.seconds': 'synchronized host wall clock around inference',
+            'phase_ms': 'current-stream CUDA events',
+            'layer_forward_ms': 'current-stream CUDA events',
+            'window_ms': 'current-stream CUDA events',
+        },
     }
     if train_inst is not None:
         report['train_profile'] = train_inst.summary()
-        if args.profile != 'none' and not train_inst.done:
+        if args.profile != 'none' and not report['train_profile']['window_complete']:
             print(
                 '[profiling] WARNING: training ended before the profiling window '
                 'completed (lower --epoch or raise --max-epochs)',
@@ -457,8 +509,13 @@ def main(argv=None):
             )
     if infer_inst is not None:
         report['inference'] = run_inference(
-            trained, arrays, cfg, infer_inst if args.profile != 'none' else None
+            trained,
+            arrays,
+            cfg,
+            infer_inst if args.profile != 'none' else None,
+            num_steps=num_steps,
         )
+        report['num_steps'] = report['inference']['n_steps']
         report['infer_profile'] = infer_inst.summary()
 
     (out / 'report.json').write_text(json.dumps(report, indent=2, default=str) + '\n')

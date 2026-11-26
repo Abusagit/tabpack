@@ -2491,6 +2491,9 @@ def _train(
 
     model_pack = tabpackage.nn.TabPack(pack_size=initial_pack_size, **model_kwargs)
     model_pack.to(config.device)
+    attach_model = getattr(_instrument.get_instrumenter(), 'attach_model', None)
+    if attach_model is not None:
+        attach_model(model_pack)
 
     if config.compile_model:
         model_pack.forward = torch.compile(  # ty: ignore[invalid-assignment]

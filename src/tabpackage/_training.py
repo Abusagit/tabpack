@@ -261,11 +261,15 @@ def make_optimizer_pack(
         # with varying per-model shapes requires special care, so the special helper
         # function is used to build separate per-layer parameter groups correctly.
         for i_block, block in enumerate(model_pack.backbone.blocks):
-            parameter_group = cls.make_muon_parameter_group(
-                block.linear,
-                grouped_square=i_block > 0,
-                grouped_rectangular=i_block == 0,
-            )
+            if kwargs.get('muon_backend', 'padded') == 'grouped':
+                parameter_group = cls.make_muon_parameter_group(
+                    block.linear,
+                    grouped_square=i_block > 0,
+                    grouped_rectangular=i_block == 0,
+                )
+            else:
+                # Preserve subclasses implementing the original one-argument hook.
+                parameter_group = cls.make_muon_parameter_group(block.linear)
             if i_block == 0:
                 # The first block is used by all models, so none of the models has zero
                 # updates in this block. Giving an explicit hint about that avoids the

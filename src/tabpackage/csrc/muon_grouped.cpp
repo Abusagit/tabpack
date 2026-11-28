@@ -15,7 +15,9 @@ struct Plan {
   torch::Tensor x, A, B, y, pointers;
   using Gemm = decltype(&cublasGemmGroupedBatchedEx);
   Gemm gemm;
-  int version, input_columns, workspace_columns;
+  int version, input_columns, workspace_columns, gram_columns;
+  bool rectangular_layout;
+  std::vector<int> inactive_members;
   struct LtCase {
     cublasLtMatmulDesc_t desc=nullptr;
     cublasLtMatrixLayout_t left=nullptr,right=nullptr,c=nullptr,d=nullptr;
@@ -27,11 +29,11 @@ struct Plan {
   std::vector<int> member_ids;
   std::string wide_backend="grouped";
   Plan(torch::Tensor input, std::vector<int> widths, std::vector<int> members, bool rectangular=false,
-       std::string wide_strategy="auto") : sizes(widths), member_ids(members) {
+       std::string wide_strategy="auto") : rectangular_layout(rectangular) {
     TORCH_CHECK(wide_strategy=="auto" || wide_strategy=="grouped" || wide_strategy=="lt", "unknown BX backend");
     TORCH_CHECK(input.is_cuda() && input.dim()==3, "CUDA matrix pack required");
     TORCH_CHECK(rectangular ? input.size(1)<=input.size(2) : input.size(1)==input.size(2), "unsupported orientation");
-    TORCH_CHECK(members.size()==sizes.size() && !sizes.empty(), "member/width count mismatch");
+    TORCH_CHECK(members.size()==widths.size() && !widths.empty(), "member/width count mismatch");
     c10::cuda::CUDAGuard guard(input.device());
     gemm = reinterpret_cast<Gemm>(dlsym(RTLD_DEFAULT, "cublasGemmGroupedBatchedEx"));
     TORCH_CHECK(gemm, "loaded cuBLAS does not export cublasGemmGroupedBatchedEx (requires CUDA >=12.5)");
@@ -39,16 +41,37 @@ struct Plan {
     auto opts=input.options().dtype(torch::kBFloat16);
     input_columns=input.size(2);
     bool try_lt=rectangular && (wide_strategy=="lt" || (wide_strategy=="auto" && input_columns>input.size(1)));
-    cudaDeviceProp properties;
-    cudaGetDeviceProperties(&properties,input.get_device());
-    // Lt avoids the slow grouped BX kernel, so align8 is now useful for Maps Gram too.
-    bool align_lt=try_lt && properties.major>=8;
-    workspace_columns=rectangular && (input_columns%2 || align_lt) ? ((input_columns+7)/8)*8 : input_columns;
-    int n=sizes.size(), rows=input.size(1), cols=workspace_columns;
+    // BF16 matrix starts and leading dimensions must remain 16-byte aligned,
+    // including odd square shapes and the Gram buffers of rectangular layers.
+    workspace_columns=((input_columns+7)/8)*8;
+    gram_columns=((int(input.size(1))+7)/8)*8;
+    int rows=input.size(1), cols=workspace_columns;
     x=torch::zeros({input.size(0),rows,cols},opts); y=torch::zeros_like(x);
-    A=torch::zeros({input.size(0),rows,rows},opts); B=torch::zeros_like(A);
-    columns=rectangular ? std::vector<int>(n,cols) : sizes;
-    ld_x.assign(n,cols); ld_gram.assign(n,rows); counts.assign(n,1);
+    A=torch::zeros({input.size(0),rows,gram_columns},opts); B=torch::zeros_like(A);
+    set_members(widths,members);
+
+    if(try_lt) {
+      if(initialize_lt()) wide_backend="lt";
+      else lt_workspace=torch::Tensor();
+    }
+  }
+  void set_members(std::vector<int> widths, std::vector<int> members) {
+    TORCH_CHECK(widths.size()==members.size() && !widths.empty(), "member/width count mismatch");
+    c10::cuda::CUDAGuard guard(x.device());
+    int n=widths.size(), rows=x.size(1), cols=x.size(2);
+    std::vector<bool> active(x.size(0),false);
+    for(int i=0;i<n;i++) {
+      TORCH_CHECK(widths[i]>0 && widths[i]<=rows,"invalid width");
+      TORCH_CHECK(members[i]>=0 && members[i]<x.size(0), "invalid member index");
+      TORCH_CHECK(!active[members[i]], "duplicate member index");
+      TORCH_CHECK(wide_backend!="lt" || lt_cases.count(widths[i]), "unknown Lt width");
+      active[members[i]]=true;
+    }
+    sizes=std::move(widths); member_ids=std::move(members);
+    inactive_members.clear();
+    for(int i=0;i<x.size(0);i++) if(!active[i]) inactive_members.push_back(i);
+    columns=rectangular_layout ? std::vector<int>(n,cols) : sizes;
+    ld_x.assign(n,cols); ld_gram.assign(n,gram_columns); counts.assign(n,1);
     normal.assign(n,CUBLAS_OP_N); transpose.assign(n,CUBLAS_OP_T);
     one.assign(n,1); zero.assign(n,0); a.assign(n,3.4445f);
     b.assign(n,-4.7750f); c.assign(n,2.0315f);
@@ -56,16 +79,12 @@ struct Plan {
     auto p=host.data_ptr<int64_t>();
     std::vector<torch::Tensor> buffers={x,A,B,y};
     for(int j=0;j<4;j++) for(int i=0;i<n;i++) {
-      TORCH_CHECK(sizes[i]>0 && sizes[i]<=rows,"invalid width");
-      TORCH_CHECK(members[i]>=0 && members[i]<input.size(0), "invalid member index");
-      int64_t matrix_elements=(j==0 || j==3) ? int64_t(rows)*cols : int64_t(rows)*rows;
-      p[j*n+i]=reinterpret_cast<int64_t>(buffers[j].data_ptr())+members[i]*matrix_elements*2;
+      p[j*n+i]=reinterpret_cast<int64_t>(buffers[j].data_ptr())
+        +member_ids[i]*buffers[j].stride(0)*buffers[j].element_size();
     }
-    pointers=host.to(input.device());
-    if(try_lt) {
-      if(initialize_lt()) wide_backend="lt";
-      else lt_workspace=torch::Tensor();
-    }
+    pointers=host.to(x.device());
+    // A newly inactive member must never retain the previous call's result.
+    y.zero_();
   }
   ~Plan() {
     for(auto& entry:lt_cases) {
@@ -92,14 +111,14 @@ struct Plan {
     for(int i:member_ids) {
       ax=std::min(ax,alignment(x.data_ptr<at::BFloat16>()+int64_t(i)*rows*cols));
       ax=std::min(ax,alignment(y.data_ptr<at::BFloat16>()+int64_t(i)*rows*cols));
-      ab=std::min(ab,alignment(B.data_ptr<at::BFloat16>()+int64_t(i)*rows*rows));
+      ab=std::min(ab,alignment(B.data_ptr<at::BFloat16>()+int64_t(i)*B.stride(0)));
     }
     for(int width:sizes) {
       if(lt_cases.count(width)) continue;
       auto& c=lt_cases[width];
       if(cublasLtMatmulDescCreate(&c.desc,CUBLAS_COMPUTE_32F,CUDA_R_32F)!=CUBLAS_STATUS_SUCCESS ||
          cublasLtMatrixLayoutCreate(&c.left,CUDA_R_16BF,cols,width,cols)!=CUBLAS_STATUS_SUCCESS ||
-         cublasLtMatrixLayoutCreate(&c.right,CUDA_R_16BF,width,width,rows)!=CUBLAS_STATUS_SUCCESS ||
+         cublasLtMatrixLayoutCreate(&c.right,CUDA_R_16BF,width,width,gram_columns)!=CUBLAS_STATUS_SUCCESS ||
          cublasLtMatrixLayoutCreate(&c.c,CUDA_R_16BF,cols,width,cols)!=CUBLAS_STATUS_SUCCESS ||
          cublasLtMatrixLayoutCreate(&c.d,CUDA_R_16BF,cols,width,cols)!=CUBLAS_STATUS_SUCCESS) return false;
       cublasLtMatmulPreference_t pref;
@@ -124,7 +143,7 @@ struct Plan {
     for(size_t j=0;j<sizes.size();j++) {
       int i=member_ids[j]; auto& c=lt_cases.at(sizes[j]);
       auto px=source.data_ptr<at::BFloat16>()+int64_t(i)*rows*cols;
-      auto pb=B.data_ptr<at::BFloat16>()+int64_t(i)*rows*rows;
+      auto pb=B.data_ptr<at::BFloat16>()+int64_t(i)*B.stride(0);
       auto py=target.data_ptr<at::BFloat16>()+int64_t(i)*rows*cols;
       auto status=cublasLtMatmul(lt,c.desc,&alpha,px,c.left,pb,c.right,&beta,px,c.c,py,c.d,
         &c.algorithm,lt_workspace.data_ptr(),lt_workspace.numel(),
@@ -158,6 +177,7 @@ struct Plan {
     auto input_view=x.narrow(2,0,input_columns);
     TORCH_CHECK(normalized.device()==x.device() && normalized.sizes()==input_view.sizes() && normalized.scalar_type()==torch::kBFloat16,"plan input mismatch");
     input_view.copy_(normalized);
+    for(int i:inactive_members) x.select(0,i).zero_();
     if(workspace_columns>input_columns)
       x.narrow(2,input_columns,workspace_columns-input_columns).zero_();
     int current=0, next=3;
@@ -182,6 +202,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
   pybind11::class_<Plan>(m,"Plan").def(pybind11::init<torch::Tensor,std::vector<int>,std::vector<int>,bool,std::string>(),
       pybind11::arg("input"),pybind11::arg("widths"),pybind11::arg("members"),pybind11::arg("rectangular")=false,
       pybind11::arg("wide_strategy")="auto")
+    .def("set_members",&Plan::set_members)
     .def("run",&Plan::run).def_readonly("version",&Plan::version)
     .def_readonly("workspace_columns",&Plan::workspace_columns)
     .def_readonly("wide_backend",&Plan::wide_backend);

@@ -159,5 +159,93 @@
     "Metric sums six phase means rather than the older outer-step CUDA-event latency. Do not splice into that table without this scope note.",
     "Maps X hashes and sampled architectures match previous runs. Processed y hashes differ: target_std is0.37708914279937744 vs0.37708917260169983 (one FP32 ULP). Raw y and default train split SHA256 match across hosts; targets match exactly inside every new native/cublas pair.",
     "Final wrapper reads model count/seed/skip-zero from configs rather than assigning the same values. All12 emitted run configs match final config payloads; final wrapper is exercised by the accepted Maps run."
-  ]
+  ],
+  "review_followup": {
+    "date": "2026-11-28",
+    "pr": "https://github.com/Abusagit/tabpack/pull/6",
+    "changes": [
+      "Align BF16 X/Y and Gram matrix starts and leading dimensions to 16 bytes, including odd square/rectangular shapes.",
+      "Preserve one-argument make_muon_parameter_group hooks for the padded backend.",
+      "Validate all grouped updates before mutating any parameter, gradient or optimizer state.",
+      "Reuse X/Y/A/B and Lt workspace across active-member changes, clearing inactive output.",
+      "Resolve common runner add/add conflicts against main df04efe95dda74f647f6f9c4a918bd286d8b00e1."
+    ],
+    "validation": [
+      {
+        "run_id": "20261128T134420Z-4ef49165",
+        "host": "imladris",
+        "gpu": "Quadro RTX 4000",
+        "torch": "2.12.1+cu126",
+        "cuda": "12.6",
+        "pytest_passed": 57,
+        "pytest_skipped": 5,
+        "ns_comparisons": 54,
+        "max_relative_l2": 0.0,
+        "optimizer_lifecycle_passed": true,
+        "workspace_memory": {
+          "torch": "2.12.1+cu126",
+          "cuda": "12.6",
+          "gpu": "Quadro RTX 4000",
+          "shape": [
+            16,
+            256,
+            8192
+          ],
+          "alternating_active_sets": 8,
+          "steady_peak_bytes": 771366912,
+          "reuse_peak_bytes": 771366912,
+          "overlapping_plan_construction_peak_bytes": 792336896,
+          "extra_live_plan_bytes": 205521408,
+          "inactive_updates_zero": true
+        }
+      },
+      {
+        "run_id": "20261128T134518Z-099839a0",
+        "host": "beleriand",
+        "gpu": "NVIDIA RTX A4000",
+        "torch": "2.14.0+cu126",
+        "cuda": "12.6",
+        "pytest_passed": 57,
+        "pytest_skipped": 5,
+        "ns_comparisons": 54,
+        "max_relative_l2": 0.002412498462945223,
+        "optimizer_lifecycle_passed": true,
+        "workspace_memory": {
+          "torch": "2.14.0+cu126",
+          "cuda": "12.6",
+          "gpu": "NVIDIA RTX A4000",
+          "shape": [
+            16,
+            256,
+            8192
+          ],
+          "alternating_active_sets": 8,
+          "steady_peak_bytes": 771367424,
+          "reuse_peak_bytes": 771367424,
+          "overlapping_plan_construction_peak_bytes": 792336896,
+          "extra_live_plan_bytes": 205521408,
+          "inactive_updates_zero": true
+        }
+      }
+    ],
+    "source_sha256": {
+      "src/tabpackage/_muon_grouped.py": "dcdcedf4234ecb68c39efb4dde3e8137e7cc23ce0119c379f5a3eedc6d77e564",
+      "src/tabpackage/csrc/muon_grouped.cpp": "6f2cd35fc588cf6789d303ec76abec3de06ef37d3f6096694ca81c69e9a66c96",
+      "src/tabpackage/optim.py": "de8cd0af4e1ffa853f5ee9e72149aacef0352008411b91c099b7edde9f1cb45e",
+      "src/tabpackage/_training.py": "c07b0140ffd84c61a193d617b28983d4df8a73ca8055d8ec5b67caba8105ede1"
+    },
+    "historical_speed_evidence": {
+      "verified_remote_reports": [
+        "ysda_imladris:~/tabpack-runs/20261119T123325Z-3d5f28b3/output/maps-routing-1-grouped-timing/report.json",
+        "ysda_imladris:~/tabpack-runs/20261119T122635Z-469c900b/output/homecredit-default-1-grouped-timing/report.json"
+      ],
+      "both_first_layers_used": "lt",
+      "summary": "dev/veleboks/results/muon-first-linear/current-speedups.json"
+    },
+    "limitations": [
+      "No new speed benchmark or pack-size sweep requested; historical timings predate these fixes and do not measure the added preflight work.",
+      "Numerical agreement is not a convergence-quality claim.",
+      "Peak memory is PyTorch allocated memory in a synthetic alternating-active-set check, not whole-process GPU memory."
+    ]
+  }
 }

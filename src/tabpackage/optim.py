@@ -602,7 +602,8 @@ class MuonAdamWPack(OptimizerPack):
                 wide rectangular groups can use cuBLASLt for the final NS product
                 with separate input/output buffers, avoiding a padded copy.
                 Tall groups fall back to native. Excluded update regions must be
-                zero; a synchronizing check enforces this every call. Parameter
+                zero; a synchronizing preflight check enforces this before any
+                optimizer state or parameter changes. Parameter
                 padding may remain nonzero. Other groups use the
                 original implementation. Compilation of Muon is incompatible
                 with the experimental backend.
@@ -821,6 +822,7 @@ class MuonAdamWPack(OptimizerPack):
                     newton_schulz_steps,
                     active_pack_idx,
                     rectangular=group.get('muon_grouped_rectangular', False),
+                    _padding_checked=True,
                 )
             elif active_pack_idx is None or len(active_pack_idx) == len(update):
                 update = self._zeropower_via_newtonschulz5(
@@ -923,12 +925,47 @@ class MuonAdamWPack(OptimizerPack):
             else:
                 p.add_((exp_avg / denom).mul_(maybe_unsqueeze(step_size)), alpha=-1)
 
+    def _validate_grouped_updates(self) -> None:
+        # Validate every group before any Muon or AdamW mutation. In particular,
+        # an invalid later group must not leave earlier groups half-updated.
+        from tabpackage._muon_grouped import GroupedNewtonSchulz
+
+        for group in self.param_groups:
+            widths = group.get('muon_grouped_widths')
+            if not group['muon'] or widths is None:
+                continue
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+                grad = p.grad.data
+                if grad.is_sparse:
+                    raise RuntimeError('Sparse gradients are not supported')
+                momentum = _maybe_unsqueeze(group['muon_momentum'], p=p)
+                state = self.state.get(p, {})
+                previous = state.get('muon_momentum_buffer')
+                if previous is None:
+                    previous = torch.zeros_like(p)
+                candidate = previous.lerp(grad, 1 - momentum)
+                if group['muon_nesterov']:
+                    candidate = grad.lerp(candidate, momentum)
+                runtime = self._grouped_runtimes.setdefault(
+                    id(p), GroupedNewtonSchulz()
+                )
+                runtime.validate_padding(
+                    candidate,
+                    widths,
+                    rectangular=group.get('muon_grouped_rectangular', False),
+                )
+
     @torch.no_grad()
     def step(self, closure: Callable[[], Tensor] | None = None) -> Tensor | None:  # ty: ignore[invalid-method-override]
         """Perform a single optimization step for all pack members."""
         loss = None
         if closure is not None:
             loss = closure()
+
+        if self._muon_backend == 'grouped':
+            self._validate_grouped_updates()
 
         for group in self.param_groups:
             if group['muon']:

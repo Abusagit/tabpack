@@ -37,6 +37,8 @@ def main():
         for m, n, rectangular in (
             (16, 97, True),
             (17, 97, True),
+            (17, 17, False),
+            (16, 98, True),
             (32, 31506, True),
             (512, 31506, True),
             (512, 20061, True),
@@ -61,10 +63,7 @@ def main():
                     assert runtime.plan.workspace_columns == 20064
                     assert not result.is_contiguous()
                 if n == 31506:
-                    expected_columns = 31506
-                    if torch.cuda.get_device_properties(0).major >= 8:
-                        expected_columns = 31512
-                    assert runtime.plan.workspace_columns == expected_columns
+                    assert runtime.plan.workspace_columns == 31512
                 if m == 512 and torch.cuda.get_device_properties(0).major >= 8:
                     assert runtime.plan.wide_backend == 'lt'
                 y = result.clone()

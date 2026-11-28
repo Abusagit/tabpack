@@ -10,6 +10,7 @@ See common/README.md for the full instructions, nsys/ncu wrappers and outputs.
 import argparse
 import datetime
 import functools
+import hashlib
 import json
 import math
 import os
@@ -46,6 +47,17 @@ def _compiled(kwargs: dict) -> dict:
 
 
 VARIANTS = {'native': _native, 'compiled': _compiled}
+
+
+class _ProfileFinished(Exception):
+    pass
+
+
+class _BoundedInstrumenter(Instrumenter):
+    def step_end(self):
+        super().step_end()
+        if self.done:
+            raise _ProfileFinished()
 
 
 # >>> Config -> tabpackage.train arguments
@@ -114,6 +126,8 @@ def _sigmoid_squeeze(x):
 
 
 def build_train_kwargs(cfg, meta, datasets, max_epochs):
+    if not isinstance(cfg.get('use_cublas_muon', False), bool):
+        raise TypeError('use_cublas_muon must be a boolean')
     loss_fn, metric, transform, metric_name = make_task(meta)
     criterion = tabpackage.EvalCriterionConfig(
         dataset='val',
@@ -139,6 +153,9 @@ def build_train_kwargs(cfg, meta, datasets, max_epochs):
         'optimizer': {
             'type': tabpackage.optim.MuonAdamWPack,
             'muon_skip_zero_updates': cfg.get('muon_skip_zero_updates', False),
+            'muon_backend': 'grouped'
+            if cfg.get('use_cublas_muon', False)
+            else 'padded',
         },
         'batch_size': cfg['batch_size'],
         'max_epochs': max_epochs,
@@ -333,6 +350,11 @@ def main(argv=None):
     )
     p.add_argument('--variant', choices=sorted(VARIANTS), default='native')
     p.add_argument(
+        '--stop-after-profile',
+        action='store_true',
+        help='train mode: stop after the active window, without validation/ensembling',
+    )
+    p.add_argument(
         '--capture-phase',
         help='nvtx only: put the profiler capture range around this phase only '
         '(e.g. backward) instead of the whole window; for ncu, see README',
@@ -343,6 +365,10 @@ def main(argv=None):
         help='output dir; default .cache/runs/<name>-<mode>-<profile>-<variant>-<time>',
     )
     args = p.parse_args(argv)
+    if args.stop_after_profile and (
+        args.mode != 'train' or args.profile == 'none' or args.steps <= 0
+    ):
+        p.error('--stop-after-profile requires train mode, profiling and --steps > 0')
     if args.warmup is None:
         args.warmup = 0 if args.steps == 0 else 1
     if args.steps == 0 and (args.wait or args.warmup or args.repeat != 1):
@@ -356,7 +382,8 @@ def main(argv=None):
     }
 
     def make_inst(start_step):
-        return Instrumenter(
+        cls = _BoundedInstrumenter if args.stop_after_profile else Instrumenter
+        return cls(
             args.profile,
             out,
             Schedule(start_step, args.steps, args.wait, args.warmup, args.repeat),
@@ -429,8 +456,11 @@ def main(argv=None):
     )
     torch.cuda.reset_peak_memory_stats()
     start = time.perf_counter()
+    trained = None
     try:
         trained = tabpackage.train(**kwargs)
+    except _ProfileFinished:
+        pass
     finally:
         tabpackage._instrument.set_instrumenter(None)
     torch.cuda.synchronize()
@@ -440,12 +470,25 @@ def main(argv=None):
         'variant': args.variant,
         'profile': args.profile,
         'environment': environment(),
+        'pid': os.getpid(),
+        'upstream_common_commit': 'dfe0b0852f8ce9a65782267ae13653262c8f2430',
+        'config': cfg,
+        'sampled_hyperparameters': kwargs['per_model_hyperparameters'],
+        'data_hashes': {
+            split: {k: hashlib.sha256(v.tobytes()).hexdigest() for k, v in a.items()}
+            for split, a in arrays.items()
+        },
+        'stopped_after_profile': trained is None,
         'steps_per_epoch': steps_per_epoch,
         'max_epochs': max_epochs,
         'train_wall_seconds': time.perf_counter() - start,
         'train_peak_allocated_mib': torch.cuda.max_memory_allocated() / 2**20,
-        'training_loop_seconds': trained.get_training_loop_time(),
-        'training_loop_steps': trained.get_training_loop_step(),
+        'training_loop_seconds': (
+            trained.get_training_loop_time() if trained is not None else None
+        ),
+        'training_loop_steps': (
+            trained.get_training_loop_step() if trained is not None else train_inst.step
+        ),
     }
     if train_inst is not None:
         report['train_profile'] = train_inst.summary()
